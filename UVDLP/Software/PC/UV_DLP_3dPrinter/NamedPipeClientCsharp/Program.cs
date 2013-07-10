@@ -18,15 +18,17 @@ namespace NamedPipeClientCsharp
             StreamReader reader = new StreamReader(client);
             StreamWriter writer = new StreamWriter(client);
 
-            writer.WriteLine("*** Hello From C# client ***");
+            String line = reader.ReadLine();
+            Console.WriteLine(line);
+            writer.WriteLine("CLIENT C#debugger");
             writer.Flush();
-            Console.WriteLine(reader.ReadLine());
 
-            Console.WriteLine("Press enter to exit");
             while (true)
             {
-                string input = Console.ReadLine();
-                if (String.IsNullOrEmpty(input)) break;
+                line = reader.ReadLine();
+                Console.WriteLine(line);
+                //writer.WriteLine("Received: " + line);
+                //writer.Flush();
             }
         }
     }

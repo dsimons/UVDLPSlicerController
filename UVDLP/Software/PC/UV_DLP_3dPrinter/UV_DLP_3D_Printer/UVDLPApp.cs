@@ -14,7 +14,7 @@ using System.Drawing;
 
 namespace UV_DLP_3D_Printer
 {
-    public enum eAppEvent 
+    public enum eAppEvent
     {
         eModelLoaded,
         eModelRemoved,
@@ -31,7 +31,7 @@ namespace UV_DLP_3D_Printer
         private static UVDLPApp m_instance = null;
         public String m_PathMachines;
         public String m_PathProfiles;
-       // public String m_apppath;
+        // public String m_apppath;
         // the current application configuration object
         public AppConfig m_appconfig;
         public string appcofnginame; // the full filename
@@ -47,6 +47,8 @@ namespace UV_DLP_3D_Printer
         public SliceBuildConfig m_buildparms;
         // the interface to the printer
         public DeviceInterface m_deviceinterface;// = new PrinterInterface();
+        // the interface to the named pipe printer driver
+        public NamedPipeDriver m_namedpipedriver;
         // the generated or loaded GCode File;
         public GCodeFile m_gcode;
         // the slicer we're using 
@@ -59,16 +61,16 @@ namespace UV_DLP_3D_Printer
 
         private static String m_appconfigname = "CreationConfig.xml";
         public static String m_pathsep = "\\";
-        public static UVDLPApp Instance() 
+        public static UVDLPApp Instance()
         {
-            if (m_instance == null) 
+            if (m_instance == null)
             {
                 m_instance = new UVDLPApp();
             }
             return m_instance;
         }
 
-        private UVDLPApp() 
+        private UVDLPApp()
         {
             m_appconfig = new AppConfig();
             m_printerinfo = new MachineConfig();
@@ -87,25 +89,25 @@ namespace UV_DLP_3D_Printer
             Mac
         }
 
-        public void RaiseAppEvent(eAppEvent ev, String message) 
+        public void RaiseAppEvent(eAppEvent ev, String message)
         {
-            if (AppEvent != null) 
+            if (AppEvent != null)
             {
                 AppEvent(ev, message);
             }
         }
 
-        public void CalcScene() 
+        public void CalcScene()
         {
             m_sceneobject = new Object3d();
-            foreach(Object3d obj in m_engine3d.m_objects)
+            foreach (Object3d obj in m_engine3d.m_objects)
             {
                 m_sceneobject.Add(obj);
             }
         }
-        public Object3d Scene 
+        public Object3d Scene
         {
-            get 
+            get
             {
                 return m_sceneobject;
             }
@@ -115,7 +117,7 @@ namespace UV_DLP_3D_Printer
         {
             SupportGenerator.GenerateSupportObjects(5, 5);
         }
-        public void AddSupport() 
+        public void AddSupport()
         {
             Cylinder3d cyl = new Cylinder3d();
             cyl.Create(2.5, 1.5, 10, 15, 2);
@@ -123,18 +125,18 @@ namespace UV_DLP_3D_Printer
             RaiseAppEvent(eAppEvent.eModelLoaded, "Model Created");
         }
 
-        public void MakeCurrent(Object3d obj)         
+        public void MakeCurrent(Object3d obj)
         {
-        
+
         }
-        public void RemoveCurrentModel() 
+        public void RemoveCurrentModel()
         {
             m_engine3d.RemoveObject(m_selectedobject);
             m_selectedobject = null;
             RaiseAppEvent(eAppEvent.eModelRemoved, "model removed");
 
         }
-        public bool LoadModel(String filename) 
+        public bool LoadModel(String filename)
         {
             try
             {
@@ -153,21 +155,21 @@ namespace UV_DLP_3D_Printer
                 RaiseAppEvent(eAppEvent.eModelLoaded, "Model Loaded");
                 return true;
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 DebugLogger.Instance().LogRecord(ex.Message);
                 return false;
             }
         }
 
-        void SliceEv(Slicer.eSliceEvent ev, int layer, int totallayers) 
+        void SliceEv(Slicer.eSliceEvent ev, int layer, int totallayers)
         {
             String path = "";
-            switch (ev) 
+            switch (ev)
             {
                 case Slicer.eSliceEvent.eSliceStarted:
                     // if we're exporting images
-                    if (m_buildparms.exportimages) 
+                    if (m_buildparms.exportimages)
                     {
                         // get the model name
                         String modelname = m_selectedobject.m_fullname;
@@ -184,7 +186,7 @@ namespace UV_DLP_3D_Printer
                 case Slicer.eSliceEvent.eLayerSliced:
                     //save the rendered image slice
                     //render the slice
-                   
+
                     if (m_buildparms.exportimages)
                     {
                         // get the model name
@@ -194,7 +196,7 @@ namespace UV_DLP_3D_Printer
                         path += UVDLPApp.m_pathsep;
                         path += Path.GetFileNameWithoutExtension(modelname);// strip off the file extension
                         Bitmap bmp = null;
-                        String imagename = path + m_pathsep + Path.GetFileNameWithoutExtension(modelname) + String.Format("{0:0000}",layer) + ".png";
+                        String imagename = path + m_pathsep + Path.GetFileNameWithoutExtension(modelname) + String.Format("{0:0000}", layer) + ".png";
                         bmp = UVDLPApp.Instance().m_slicefile.RenderSlice(layer);
                         bmp.Save(imagename);
                     }
@@ -220,7 +222,7 @@ namespace UV_DLP_3D_Printer
             }
         }
 
-        public void LoadGCode() 
+        public void LoadGCode()
         {
             try
             {
@@ -233,13 +235,13 @@ namespace UV_DLP_3D_Printer
                 }
                 RaiseAppEvent(eAppEvent.eGCodeLoaded, "");
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 DebugLogger.Instance().LogRecord(ex.Message);
             }
         }
 
-        public void SaveGCode() 
+        public void SaveGCode()
         {
             try
             {
@@ -252,7 +254,7 @@ namespace UV_DLP_3D_Printer
                 }
                 RaiseAppEvent(eAppEvent.eGCodeSaved, "");
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 DebugLogger.Instance().LogRecord(ex.Message);
             }
@@ -286,10 +288,10 @@ namespace UV_DLP_3D_Printer
         /*
          This function loads the machine profile and makes it current
          */
-        public bool LoadMachineConfig(string filename) 
+        public bool LoadMachineConfig(string filename)
         {
             bool ret = m_printerinfo.Load(filename);
-            if (ret) 
+            if (ret)
             {
                 m_appconfig.m_curmachineeprofilename = filename; // set the app config name
                 //save the app config
@@ -297,13 +299,13 @@ namespace UV_DLP_3D_Printer
             }
             return ret;
         }
-        public void SaveCurrentMachineConfig() 
+        public void SaveCurrentMachineConfig()
         {
             try
             {
                 m_printerinfo.Save(m_appconfig.m_curmachineeprofilename);
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 DebugLogger.Instance().LogRecord(ex.Message);
             }
@@ -320,12 +322,28 @@ namespace UV_DLP_3D_Printer
             }
         }
 
-        public void SetupDriver() 
+        public void SetupNamedPipe()
+        {
+            // todo this should be a regular driver
+            DebugLogger.Instance().LogRecord("Starting named pipe driver");
+            if (m_namedpipedriver != null) {
+                DebugLogger.Instance().LogRecord("Named pipe driver was already started, disconnecting and replacing");
+                if (m_namedpipedriver.Connected == true)
+                {
+                    m_namedpipedriver.Disconnect();
+                }
+            }
+            m_namedpipedriver = new NamedPipeDriver();
+            m_namedpipedriver.Connect();
+            DebugLogger.Instance().LogRecord("Started named pipe driver");
+        }
+
+        public void SetupDriver()
         {
             DebugLogger.Instance().LogRecord("Changing driver type to " + m_printerinfo.m_driverconfig.m_drivertype.ToString());
-            if (m_deviceinterface.Driver != null) 
+            if (m_deviceinterface.Driver != null)
             {
-                if (m_deviceinterface.Driver.Connected == true) 
+                if (m_deviceinterface.Driver.Connected == true)
                 {
                     // be sure to close the old driver to play nice
                     m_deviceinterface.Driver.Disconnect();
@@ -334,7 +352,7 @@ namespace UV_DLP_3D_Printer
             m_deviceinterface.Driver = DriverFactory.Create(m_printerinfo.m_driverconfig.m_drivertype);
         }
 
-        public void DoAppStartup() 
+        public void DoAppStartup()
         {
             //m_apppath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
             //get the path separater 
@@ -347,13 +365,13 @@ namespace UV_DLP_3D_Printer
                 m_pathsep = "/";
             }
             // define some default paths
-//            m_PathMachines = m_apppath + "\\Machines";
-  //          m_PathProfiles = m_apppath + "\\Profiles";
-            m_PathMachines = "." + m_pathsep +  "Machines";
+            //            m_PathMachines = m_apppath + "\\Machines";
+            //          m_PathProfiles = m_apppath + "\\Profiles";
+            m_PathMachines = "." + m_pathsep + "Machines";
             m_PathProfiles = "." + m_pathsep + "Profiles";
 
             // set up directories if they don't exist
-            if (!Directory.Exists(m_PathMachines)) 
+            if (!Directory.Exists(m_PathMachines))
             {
                 Utility.CreateDirectory(m_PathMachines);
             }
@@ -376,18 +394,19 @@ namespace UV_DLP_3D_Printer
             }
 
             //load the current machine configuration file
-            if (!m_printerinfo.Load(m_appconfig.m_curmachineeprofilename)) 
+            if (!m_printerinfo.Load(m_appconfig.m_curmachineeprofilename))
             {
                 m_printerinfo.Save(m_appconfig.m_curmachineeprofilename);
             }
             //load the current slicing profile
-            if (!m_buildparms.Load(m_appconfig.m_cursliceprofilename)) 
+            if (!m_buildparms.Load(m_appconfig.m_cursliceprofilename))
             {
                 m_buildparms.CreateDefault();
                 m_buildparms.Save(m_appconfig.m_cursliceprofilename);
             }
 
             SetupDriver();
+            SetupNamedPipe();
         }
 
     }
