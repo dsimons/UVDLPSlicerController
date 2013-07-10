@@ -1,0 +1,10 @@
+LIBRARY	"ProjectImage"
+EXPORTS
+NumInputs
+NumOutputs
+GetInputName
+GetOutputName
+CSimStart
+CCalculate
+CSimStop
+CConfigure

@@ -1,0 +1,142 @@
+DLL-Import
+  
+Included in version:
+DMM-ProfiLab:      No
+Digital-ProfiLab:      No
+ProfiLab-Expert:      Yes
+  
+This component offers a programming interface, which makes it possible to create your own 
+ProfiLab components, for example to control self-made hardware devices, etc.
+For that purpose you need a programming language, that allows you to compile DLL-files
+(Dynamic Link Libraries), and you need some programming experience, as well.
+Programming your own component, you have to meet some requirements of ProfiLab.
+For example your DLL must export certain functions, that define the numbers of component 
+inputs and outputs, the pin names and the internal function of the component.
+  
+The following function are necessary for a component. The modified C++ versions use 
+instead of EXTENDED and PCHAR instead of STRING.
+  
+C++: unsigned char _stdcall NumInputs()
+alternative:
+C++: unsigned char _stdcall CNumInputsEx(double *PUser)
+The result of this function must return a byte value that defines the number of inputs
+of your component. The extended function type NumInputsEx is useful, if the number of 
+inputs depends on configuration data stored in PUser.
+  
+
+C++: unsigned char _stdcall NumOutputs()
+alternative:
+C++: unsigned char _stdcall CNumOutputsEx(double *PUser)
+The result of this function must return a byte value that defines the number of outputs 
+of your component. The extended function type NumOutputsEx is useful, if the number of 
+outputs depends on configuration data stored in PUser.
+  
+void _stdcall GetInputName(unsigned char Channel, unsigned char *Name)
+The result of this function must deliver a short text for the pin description for each input
+pin (channel) of your component. ProfiLab calls this function for each input pin, to request 
+the corresponding description. The parameter CHANNELS identifies the pin and runs from 0 to NumInputs-1.
+  
+
+C++: void _stdcall GetOutputName(unsigned char Channel, unsigned char *Name)
+The result of this function must deliver a short text for the pin description for each output
+pin (channel) of your component. ProfiLab calls this function for each output pin, to request
+the corresponding description. The parameter CHANNELS identifies the pin and runs from 0 to NumOutputs-1.
+
+
+C++: void _stdcall CCalculate(double *PInput, double *POutput, double *PUser)
+This is the main calculation procedure of your component, which defines how your component works.
+The procedure parameters PINPUT, POUTPUT and PUSER offer three pointer variables with the following function:
+  
+The pointer PINPUT points to a memory area, in which input values are stored, so that the DLL can access the 
+input values of the component. 
+
+The pointer POUTPUT points to a memory area, in which output values are stored, so that the DLL can set the
+output values of the component.
+
+The pointer PUSER points to a memory area, where the DLL can store its own (local) values. Background: Variables
+defined in the DLL are global variables. Values stored to global variables will overwrite each other, if a DLL
+component is used more than once in a ProfiLab project. To have local variables available, ProfiLab hands out the
+pointer PUSER to the DLL, so that the DLL can store local data in the memory area that PUSER points to. 
+  
+If you don´t want to use PUSER, but you need to declare variables in the DLL that are meant to be local (for
+components that are used more than once in a ProfiLab project), you can rename the DLL file and import it in
+ProfiLab with different filenames, as well.
+  
+Each of the three pointers PINPUT, POUTPUT and PUSER points to an array of 100 EXTENDED variables. All three
+pointer are declared as type PDLLParams. The declaration in Delphis is as follows:
+  
+type TDLLParams = array[0..100] of extended;
+     PDLLParams = ^TDLLParams;
+  
+C++ function types hand out this kind of memory pointer as (double *PInput) parameter for example.
+  
+The array of PINPUT offers the input values of the component. The input values can be accessed as follows:
+  
+PInput^[0] contains the numeric value of the first input,
+PInput^[1] contains the numeric value of the second input, and so on...
+  
+The array of POUTPUT offers the output values of the component. The output values can be set as follows:
+  
+POutput^[0] must be set with the numeric value for the first output,
+POutput^[1] must be set with the numeric value for the second output, and so on...
+  
+PUser^[0] to PUser^[99] can be used to store numeric user values. The values of these variables are saved in the
+ProfiLab project file, so that values are available agein, when the project is loaded next time. The variable PUser^[100]
+is set by ProfiLab and contains the number of the DLL component: 1 fo DLL1, 2 for DLL2, and so on.
+  
+The procedure CALCULATE is called repeatedly while ProfiLab is in RUN mode, to hand out new input values to the DLL and to
+request new output values from the DLL. This means that this procedure must be programmed as short as possible, and must not
+contain any pauses (WAIT loops or SLEEP commands) that waste time. After reading input values and setting new output
+vaues this routine should be terminated as soon as possible. The time spent in this procedure will directly influence
+the simulation frequency of ProfiLab.
+  
+
+C++: void _stdcall CCalculateEx(double *PInput, double *POutput, double *PUser; StringParam PStrings)
+This method was introduced to allow string processing with DLL´s. It may be used as alternative for CALCULATE. Parameter
+PSTRINGS were added for interfacing string data. Its Delphi delclaration is as follows:
+  
+type TStringParams = array[0..100] of PChar;
+     PStringParams = ^TStringParams;
+  
+Each input/output (max. 100) has a null-terminated character pointer (PChar) assigned, which points to a memory space that
+is provided by ProfiLab. Right before ProfiLab enters the method, data is fetched from the $inputs. After leaving the method
+data is handed out through the $outputs. It is not distinguished between inputs and outputs. This means that Input 0 and
+Output 0 for example share the same PChar. To make a pin become a string input or string output its pin name must be declared
+with a leading '$' character. Examples for string processing with DLL´s and ProfiLab are available.
+  
+
+C++: void _stdcall CSimStart(double *PInput, double *POutput, double *PUser)
+This procedure is called once, when the ProfiLab project enters the RUN mode, and can be used to initialize DLL variables,
+etc. The parameters have been explained before.
+
+
+C++: void _stdcall CSimStop(double *PInput, double *POutput, double *PUser)
+This procedure is called once, when RUN mode is terminated, and can be used to close open files, etc. The parameters
+have been explained before.
+
+
+C++: void _stdcall CConfigure(double *PUser)
+As soon as your DLL exports this procedure, the button CONFIGURE... in the property dialogue of the component is enabled.
+With a click on this button, ProfiLab will jump to your CONFIGURE procedure, where you can add your own setup dialogue for
+your DLL.
+  
+These very few routines make it possible to program any ProfiLab component you have in mind. For example you could program
+hardware components that control special hardware devices, or create components that execute complex calculations.
+If you want to program a component with digital outputs, simply set the numeric output vaules to 5 for HIGH levels, or to
+0 for LOW levels. Numeric inputs higher than 2.5 should be interpreted as HIGH levels, numeric inputs lower then
+2,5 as LOW leves.
+  
+Your compiled DLL file can be loaded in the property dialogue of the component. All imported functions and procedures
+are listed in the dialogue. The component will then appear in the circuit as it is defined in the DLL. To be conform
+with C-Compiler conventions, names of functions and procedure may begin with an underline character _ as well. For example
+_SimStart instead of SimStart. 
+  
+Compiling your own DLL project make sure that the linker option "Dynamic RTL" is disabled. Otherwise the DLL can not be
+loaded on systems without installed C++ environment.
+  
+PIN Function Pin type 
+User-defined User-defined Analogue inputs 
+
+  
+PIN Function Pin type 
+User-defined User-defined Analogue outputs
