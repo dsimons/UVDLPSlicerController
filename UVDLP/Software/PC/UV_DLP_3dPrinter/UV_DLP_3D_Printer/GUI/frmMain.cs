@@ -747,6 +747,8 @@ namespace UV_DLP_3D_Printer
             {
                 UVDLPApp.Instance().m_buildmgr.StartPrint(UVDLPApp.Instance().m_slicefile, UVDLPApp.Instance().m_gcode);
             }
+
+            DebugLogger.Instance().LogRecord("TODO: print() to ProfiLab");
         }
         private void cmdPause_Click(object sender, EventArgs e)
         {
@@ -819,6 +821,7 @@ namespace UV_DLP_3D_Printer
         private void cmdStop_Click(object sender, EventArgs e)
         {
             UVDLPApp.Instance().m_buildmgr.CancelPrint();
+            DebugLogger.Instance().LogRecord("TODO: stop() to ProfiLab");
         }
 
         
@@ -1326,6 +1329,7 @@ namespace UV_DLP_3D_Printer
         private void cmdPause_Click_1(object sender, EventArgs e)
         {
             UVDLPApp.Instance().m_buildmgr.PausePrint();
+            DebugLogger.Instance().LogRecord("TODO: pause() to ProfiLab");
         }
 
         private void printToolStripMenuItem_Click(object sender, EventArgs e)
