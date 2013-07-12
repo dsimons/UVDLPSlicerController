@@ -45,11 +45,54 @@ namespace UV_DLP_3D_Printer
             }
         }
 
+        public IAsyncResult ConnectStream()
+        {
+            // http://stackoverflow.com/questions/2700472/how-to-terminate-a-managed-thread-blocked-in-unmanaged-code
+            m_signal = new ManualResetEvent(false);
+
+            // mode MESSAGE?
+            m_stream = new NamedPipeServerStream("3dPrinter", PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
+            IAsyncResult asyncResult = m_stream.BeginWaitForConnection(_ => m_signal.Set(), null);
+            DebugLogger.Instance().LogRecord("ready for connection from ProfiLab");
+            m_signal.WaitOne();
+
+            if (asyncResult.IsCompleted)
+            {
+                DebugLogger.Instance().LogRecord("got connection from ProfiLab");
+                m_stream.EndWaitForConnection(asyncResult);
+                m_reader = new StreamReader(m_stream);
+                m_writer = new StreamWriter(m_stream);
+                m_writer.WriteLine("CONNECT CreationWorkshop");
+                m_writer.Flush();
+            }
+            else
+            {
+                DebugLogger.Instance().LogRecord("no connection from ProfiLab");
+                DisconnectStream();
+            }
+            
+            return asyncResult;
+        }
+
+        public void DisconnectStream()
+        {
+            if (m_stream == null)
+            {
+                return;
+            }
+            DebugLogger.Instance().LogRecord("disconnect from ProfiLab");
+            m_stream.Disconnect();
+            m_stream.Close();
+            m_stream = null;
+            m_reader = null;
+            m_writer = null;
+        }
+
         public void Connect()
         {
             if (this.Connected)
             {
-                DebugLogger.Instance().LogRecord("already disconnected to ProfiLab");
+                DebugLogger.Instance().LogRecord("already connected to ProfiLab");
                 return;
             }
 
@@ -57,23 +100,9 @@ namespace UV_DLP_3D_Printer
 
             Task.Factory.StartNew(() =>
             {
-                // http://stackoverflow.com/questions/2700472/how-to-terminate-a-managed-thread-blocked-in-unmanaged-code
-                m_signal = new ManualResetEvent(false);
-
-                // mode MESSAGE?
-                m_stream = new NamedPipeServerStream("3dPrinter", PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-                IAsyncResult asyncResult = m_stream.BeginWaitForConnection(_ => m_signal.Set(), null);
-                DebugLogger.Instance().LogRecord("ready for connection from ProfiLab");
-                m_signal.WaitOne();
+                IAsyncResult asyncResult = ConnectStream();
                 if (asyncResult.IsCompleted)
                 {
-                    m_stream.EndWaitForConnection(asyncResult);
-
-                    m_reader = new StreamReader(m_stream);
-                    m_writer = new StreamWriter(m_stream);
-                    m_writer.WriteLine("CONNECT CreationWorkshop");
-                    m_writer.Flush();
-
                     Task<string> t = null;
 
                     while (this.Connected)
@@ -94,13 +123,15 @@ namespace UV_DLP_3D_Printer
                         else
                         {
                             t.Dispose(); // try to cancel
+                            t = null;
+                            DisconnectStream();
+                            ConnectStream();
                         }
                     }
+                    DisconnectStream();
                 }
                 else
                 {
-                    DebugLogger.Instance().LogRecord("no connection from ProfiLab");
-                    m_stream.Close();
                     this.Connected = false;
                 }
             });
