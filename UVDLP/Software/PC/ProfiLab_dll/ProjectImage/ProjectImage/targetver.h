@@ -7,7 +7,12 @@
 
 #include <winsdkver.h>
 
-#ifndef _WIN32_WINNT		// Lassen Sie die Verwendung spezifischer Features von Windows XP oder später zu.                   
-#define _WIN32_WINNT 0x0501	// Ändern Sie dies in den geeigneten Wert für andere Versionen von Windows.
+// we want windows7+
+// #ifndef _WIN32_WINNT		// Lassen Sie die Verwendung spezifischer Features von Windows XP oder später zu.                   
+// #define _WIN32_WINNT 0x0501	// Ändern Sie dies in den geeigneten Wert für andere Versionen von Windows.
+// #endif
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0601
 #endif
+
 #include <sdkddkver.h>
