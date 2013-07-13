@@ -1,34 +1,32 @@
 #include "stdafx.h"
 #include "ProjectImage.h"
 
-
-
 // Input Channel mappings.
 // hiermee maak je de kans op fouten kleiner omdat dit makkelijker leesbaar is. Je ziet sneller
 // een fout als je IN_NEXT_IMAGE ziet als kanaal nummer dan als je 2 ziet als vaste waarde.
-const unsigned _int8 IN_ENABLE_LAMP = 0;
-const unsigned _int8 IN_RESET       = 1;
-const unsigned _int8 IN_NEXT_IMAGE  = 2;
+const unsigned _int8 IN_ENABLE_LAMP = 0; // unused
+const unsigned _int8 IN_RESET       = 1; // unused
+const unsigned _int8 IN_NEXT_IMAGE  = 2; // unused
 
 const unsigned _int8 NUM_INPUTS     = 3;
 
 // Output Channel mappings
 // Een naam voor elk kanaal nummer voor de leesbaarheid.
-const unsigned _int8 OUT_LAMP_ACTIVE   = 0;
-const unsigned _int8 OUT_IMG_AVAILABLE = 1;
+const unsigned _int8 OUT_LAMP_ACTIVE   = 0; // unused
+const unsigned _int8 OUT_IMG_AVAILABLE = 1; // unused
 // Max aantal plaatjes: 4095
-const unsigned _int8 OUT_CUR_IMG_B0    = 2; // 1ste bit (1)
-const unsigned _int8 OUT_CUR_IMG_B1    = 3; // 2de bit (2)
-const unsigned _int8 OUT_CUR_IMG_B2    = 4; // 3de bit (4)
-const unsigned _int8 OUT_CUR_IMG_B3    = 5; // 4de bit (8)
-const unsigned _int8 OUT_CUR_IMG_B4    = 6; // 5de bit (16)
-const unsigned _int8 OUT_CUR_IMG_B5    = 7; // 6de bit (32)
-const unsigned _int8 OUT_CUR_IMG_B6    = 8; // 7de bit (64)
-const unsigned _int8 OUT_CUR_IMG_B7    = 9; // 8ste bit (128)
-const unsigned _int8 OUT_CUR_IMG_B8    = 10; // 9de bit (256)
-const unsigned _int8 OUT_CUR_IMG_B9    = 11; // 10de bit (512)
-const unsigned _int8 OUT_CUR_IMG_B10   = 12; // 11de bit (1024)
-const unsigned _int8 OUT_CUR_IMG_B11   = 13; // 12de bit (2048)
+const unsigned _int8 OUT_CUR_IMG_B0    = 2; // 1ste bit (1), unused
+const unsigned _int8 OUT_CUR_IMG_B1    = 3; // 2de bit (2), unused
+const unsigned _int8 OUT_CUR_IMG_B2    = 4; // 3de bit (4), unused
+const unsigned _int8 OUT_CUR_IMG_B3    = 5; // 4de bit (8), unused
+const unsigned _int8 OUT_CUR_IMG_B4    = 6; // 5de bit (16), unused
+const unsigned _int8 OUT_CUR_IMG_B5    = 7; // 6de bit (32), unused
+const unsigned _int8 OUT_CUR_IMG_B6    = 8; // 7de bit (64), unused
+const unsigned _int8 OUT_CUR_IMG_B7    = 9; // 8ste bit (128), unused
+const unsigned _int8 OUT_CUR_IMG_B8    = 10; // 9de bit (256), unused
+const unsigned _int8 OUT_CUR_IMG_B9    = 11; // 10de bit (512), unused
+const unsigned _int8 OUT_CUR_IMG_B10   = 12; // 11de bit (1024), unused
+const unsigned _int8 OUT_CUR_IMG_B11   = 13; // 12de bit (2048), unused
 
 // ui commands from creation workshop
 const unsigned _int8 OUT_START         = 14;
@@ -220,26 +218,37 @@ PROJECTIMAGE_API void _stdcall GetOutputName(unsigned _int8 Channel, unsigned ch
 		Name[1] = 'C';
 		Name[2] = 'O';
 		Name[3] = 'N';
-		Name[3] = 0;
+		Name[4] = 0;
 		break;
 	}
 }
-BOOL start = false;
-BOOL pause = false;
-BOOL stop = true;
+
+// Local state variables for the connection to creation workshop.
+// Because these variables are declared globally in the DLL, we
+// can only use this DLL _once_. If that ever needs changing, we
+// would need to move this state information into the PUser
+// memorz block
+
+BOOL start    = false;
+BOOL pause    = false;
+BOOL stop     = true;
 BOOL pconnect = false;
-HANDLE pipe = INVALID_HANDLE_VALUE;
-HANDLE pipeEvent = NULL;
-const wchar_t *pipeName = L"\\\\.\\pipe\\3dPrinter";
-const int unsigned BUF_SIZE = 128;
+
+HANDLE pipe                   = INVALID_HANDLE_VALUE;
+const wchar_t *pipeName       = L"\\\\.\\pipe\\3dPrinter";
+const int unsigned BUF_SIZE   = 128;
 wchar_t pipeBuffer[BUF_SIZE];
 BOOL pipeResult;
+OVERLAPPED pipeOverlapped     = {0};
+BOOL pipeIOWait               = false;
 
 
+
+// helper function to convert error codes to error messages
 // http://msdn.microsoft.com/en-us/library/windows/desktop/aa365690(v=vs.85).aspx
-LPCTSTR ErrorMessage(DWORD error) { 
+LPWSTR ErrorMessage(DWORD error) { 
 
-    LPVOID lpMsgBuf;
+    LPWSTR lpMsgBuf = NULL;
 
     FormatMessage(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | 
@@ -248,92 +257,175 @@ LPCTSTR ErrorMessage(DWORD error) {
         NULL,
         error,
         MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPTSTR) &lpMsgBuf,
+        (LPWSTR) &lpMsgBuf,
         0, NULL );
 
-    return((LPCTSTR)lpMsgBuf);
+    return((LPWSTR)lpMsgBuf);
 }
 
+// helper function to log errors to a file as well as show an alert window
 void _stdcall LogError(wchar_t *message) {
 	FILE *logFile;
 	fopen_s(&logFile, "C:\\tmp\\ProjectImage.txt", "a+");
 	fwprintf_s(logFile, L"ERROR: %s\n", message);
 	fclose(logFile);
-	MessageBoxW(NULL,message,TEXT("ProjectImage Error"), MB_OKCANCEL);
+	MessageBoxW(NULL,message,L"ProjectImage Error", MB_OK);
 }
 
+// helper function to log informational status to a file
 void _stdcall LogMessage(wchar_t *message) {
 	FILE *logFile;
 	fopen_s(&logFile, "C:\\tmp\\ProjectImage.txt", "a+");
 	fwprintf_s(logFile, L"INFO: %s\n", message);
 	fclose(logFile);
-	MessageBoxW(NULL,message,TEXT("ProjectImage Message"), MB_OKCANCEL);
+	//MessageBoxW(NULL,message,L"ProjectImage Message", MB_OK);
 }
 
+// called whenever we get a START message
+void _stdcall HandleStart() {
+	start = true;
+	pause = false;
+	stop = false;
+}
+
+// called whenever we get a PAUSE message
+void _stdcall HandlePause() {
+	pause = true;
+}
+
+// called whenever we get a CANCEL message
+void _stdcall HandleCancel() {
+	start = false;
+	pause = false;
+	stop = true;
+}
+
+// called whenever we get a message.
+// Decides what to do with the message received by sending it to HandleXXX().
 void _stdcall HandleMessage(wchar_t *message) {
 	LogMessage(pipeBuffer);
+	if (wcsncmp(message, L"START", 5) == 0) {
+		HandleStart();
+	} else if (wcsncmp(message, L"PAUSE", 5) == 0) {
+		HandlePause();
+	} else if (wcsncmp(message, L"CANCEL", 5) == 0) {
+		HandleCancel();
+	}
 }
 
-// internal call to tear down named pipe client to disconnect from creation workshop
+// helper to tear down named pipe client to disconnect from creation workshop
 void _stdcall DisconnectPipe(double *PInput, double *POutput) {
 	if (pipe != INVALID_HANDLE_VALUE) {
 		CloseHandle(pipe);
-	}
-	if (pipeEvent != NULL) {
-	    CloseHandle(pipeEvent);
+		pipe = INVALID_HANDLE_VALUE;
 	}
 	pconnect = false;
-	POutput[OUT_PCONNECT] = pconnect;
+	POutput[OUT_PCONNECT] = LOW;
 }
 
+// helper to handle IO errors
+// logs the error then disconnects the pipe
+void _stdcall HandleIOError(double *PInput, double *POutput, DWORD error) {
+	LPWSTR errMsg = ErrorMessage(error);
+	LogError(errMsg);
+	DisconnectPipe(PInput, POutput);
+	LocalFree(errMsg);
+	memset(&pipeOverlapped,0,sizeof(pipeOverlapped)); // clear unused event handle
+	pipeIOWait = false;
+}
+
+// helper to read one message from the pipe
+// calls HandleMessage() if it reads a message.
+// if there is no message it doesn't do much
 void _stdcall ReadPipe(double *PInput, double *POutput) {
     DWORD numBytesToRead    = (BUF_SIZE-1) * sizeof(wchar_t);
     DWORD numBytesRead      = 0;
     DWORD error             = 0;
-    LPCTSTR errMsg          = NULL;
-	OVERLAPPED overlapped   = {0};
+    LPWSTR errMsg           = NULL;
 
 	if (pipe == INVALID_HANDLE_VALUE) {
 		return;
 	}
 
-	pipeResult = ReadFile(pipe, pipeBuffer, numBytesToRead, &numBytesRead, &overlapped);
-	error = GetLastError();
-	if (pipeResult) {
-		// got a result
-        pipeBuffer[numBytesRead / sizeof(wchar_t)] = L'\0'; // null terminate the string
-		HandleMessage(pipeBuffer);
+	if (pipeIOWait) {
+		// we've previously called ReadFile() and we are now
+		// asynchronously waiting to actually receive a message
+		pipeResult = GetOverlappedResult(pipe, &pipeOverlapped, &numBytesRead, false);
+		if (pipeResult) {
+			pipeBuffer[numBytesRead / sizeof(wchar_t)] = L'\0'; // null terminate the string
+			if (numBytesRead > 0) {
+				//LogMessage(L"message after IO wait");
+				HandleMessage(pipeBuffer);
+			} else {
+				//LogMessage(L"0 byte message after IO wait");
+			}
+			memset(&pipeOverlapped,0,sizeof(pipeOverlapped)); // clear unused event handle
+			pipeIOWait = false;
+		} else {
+			error = GetLastError();
+			switch (error) {
+				case ERROR_IO_PENDING:
+					{
+						// this is not an "actual" error but it is how windows is telling us
+						// "there is no message to be read"
+						pipeIOWait = true;
+						break;
+					}
+				case ERROR_IO_INCOMPLETE:
+					{
+						//LogError(L"TODO: calling GetOverlappedResult() when we are not in the right state");
+						break;
+					}
+				default:
+					{
+						HandleIOError(PInput, POutput, error);
+						break;
+					}
+			}
+		}
 	} else {
-		switch (error) {
-			case ERROR_HANDLE_EOF:
-				{
-					printf("\nReadFile returned FALSE and an unexpected EOF.\n");
-					DisconnectPipe(PInput, POutput);
-					break;
-				}
-			case ERROR_IO_PENDING:
-				{
-					// nothing to do
-					break;
-				}
-			default:
-				{
-					errMsg = ErrorMessage(error);
-                    printf("ReadFile GLE unhandled (%d): %s\n", error, errMsg); 
-					LogError((wchar_t *)errMsg);
-					DisconnectPipe(PInput, POutput);
-                    LocalFree((LPVOID)errMsg);
-                    break;
-				}
+		// we aren't waiting for a message yet, so call ReadFile() to read the next message
+		pipeResult = ReadFile(pipe, pipeBuffer, numBytesToRead, &numBytesRead, &pipeOverlapped);
+		if (pipeResult) {
+			// even though we are reading async, it is possible to get a message
+			// here that was alreadz buffered and waiting to be handled
+			pipeBuffer[numBytesRead / sizeof(wchar_t)] = L'\0'; // null terminate the string
+			if (numBytesRead > 0) {
+				//LogMessage(L"message without IO wait");
+				HandleMessage(pipeBuffer);
+			} else {
+				//LogMessage(L"0 byte message without IO wait");
+			}
+			memset(&pipeOverlapped,0,sizeof(pipeOverlapped)); // clear unused event handle
+			pipeIOWait = false;
+		} else {
+			error = GetLastError();
+			switch (error) {
+				case ERROR_IO_PENDING:
+					{
+						// this is normal. We've asked to read the next message
+						// but it isn't here yet. We'll read it on a later invocation
+						// of ReadPipe()
+						pipeIOWait = true;
+						break;
+					}
+				default:
+					{
+						HandleIOError(PInput, POutput, error);
+						break;
+					}
+			}
 		}
 	}
 }
 
-// internal call to set up named pipe client to connect to creation workshop
+// function to set up named pipe client to connect to creation workshop
 void _stdcall ConnectPipe(double *PInput, double *POutput) {
+	// set the pconnect output to 0 to indicate we aren't connected
 	pconnect = false;
-	POutput[OUT_PCONNECT] = pconnect;
+	POutput[OUT_PCONNECT] = LOW;
 
+	// create the named pipe
     pipe = CreateFile(
         pipeName,
         GENERIC_READ | GENERIC_WRITE,
@@ -345,25 +437,21 @@ void _stdcall ConnectPipe(double *PInput, double *POutput) {
     );
  
     if (pipe == INVALID_HANDLE_VALUE) {
-        DWORD dwError = GetLastError();
-        LPCTSTR errMsg = ErrorMessage(dwError);
-        printf("Could not open pipe (%d): %s\n", dwError, errMsg);
-		LocalFree((LPVOID)errMsg);
-		LogError(TEXT("Cannot connect to Creation Workshop"));
+		// this means we can't become a client to the named pipe
+		// usually this happens because creation workshop is not running
+		// it can also happen if we are running multiple instances of
+		// this DLL (either using it multiple times in one profilab
+		// project, or running profilab multiple times)
+        DWORD error = GetLastError();
+        LPWSTR errMsg = ErrorMessage(error);
+		LocalFree(errMsg);
+		LogError(L"Cannot connect to Creation Workshop");
 	} else {
-		pipeEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
-		if (pipeEvent == NULL) { 
-			DWORD dwError = GetLastError();
-			LPCTSTR errMsg = ErrorMessage(dwError);
-			printf("Could not CreateEvent: %d %s\n", dwError, errMsg); 
-			LocalFree((LPVOID)errMsg);
-		} else {
-			pconnect = true;
-			ReadPipe(PInput, POutput);
-		}
+		// we managed to connect to creation workshop
+		pconnect = true;
+		POutput[OUT_PCONNECT] = HIGH;
+		ReadPipe(PInput, POutput);
 	}
-
-	POutput[OUT_PCONNECT] = pconnect;
 }
 
 // Wordt door profilab aangeroepen als de simulatie gestart wordt, initializatie code
@@ -376,24 +464,25 @@ PROJECTIMAGE_API void _stdcall CCalculate(double *PInput, double *POutput, doubl
 	// De PInput bevat een array met NUM_INPUTS double waardes voor elke input (double is double precision floating point)
 	// de betekenis kan je halen uit de definities helemaal bovenaan.
 
-	// Voorbeeld, normaal moet je eerst wat doen, zoals een zwart plaatje plaatsen op het projectie scherm
-	// Als de lamp enable input laag is (kleiner dan < 2.5)
-	if (PInput[IN_ENABLE_LAMP] < SWITCH_LEVEL) {
-		POutput[OUT_LAMP_ACTIVE] = LOW;
-	} else {
-		POutput[OUT_LAMP_ACTIVE] = HIGH;
-	}
-
-	ReadPipe(PInput, POutput);
-	POutput[OUT_START] = start ? HIGH : LOW;
-	POutput[OUT_PAUSE] = pause ? HIGH : LOW;
-	POutput[OUT_STOP] = stop ? HIGH : LOW;
-	POutput[OUT_PCONNECT] = pconnect ? HIGH : LOW;
-
 	// De POutput bevat een array met NUM_OUTPUTS double waardes voor elke output.
 
 	// De PUser is een user area met geheugen om in te werken. Hier is ruimte voor maximaal 100 doubles en deze
 	// dll is er zelf verantwoordelijk voor om dit geheugen te managen.
+
+	// read messages from the pipe to creation workshop. This reads 0 or
+	// 1 message, so it has to be called multiple times. We don't arrange
+	// for that ourselves, since ProfiLab knows to invoke CCalculate()
+	// frequently
+	ReadPipe(PInput, POutput);
+
+	// set the latest state as we understand it from creation workshop.
+	// Because of the async reading of messages, this state is up to 2
+	// invocations of CCalculate() behind of reality. That's ok because
+	// CCalculate() is called pretty frequently :)
+	POutput[OUT_START] = start ? HIGH : LOW;
+	POutput[OUT_PAUSE] = pause ? HIGH : LOW;
+	POutput[OUT_STOP] = stop ? HIGH : LOW;
+	POutput[OUT_PCONNECT] = pconnect ? HIGH : LOW;
 }
 
 // Dit is de functie die aangeroepen wordt door PROFILAB als de simulatie stopt, voor het opruimen van gebruikte resources
@@ -405,5 +494,5 @@ PROJECTIMAGE_API void _stdcall CSimStop(double *PInput, double *POutput, double 
 // Dit is voor het configuratiemenu binnen PROFILAB, hier kan een scherm gemaakt worden om configuratie instellingen te doen.
 PROJECTIMAGE_API void _stdcall CConfigure(double *PUser)
 {
-	MessageBoxW(NULL,TEXT("There are no settings"),TEXT("Project Image DLL Config"), MB_OKCANCEL);
+	MessageBoxW(NULL,L"There are no settings",L"Project Image DLL Config", MB_OK);
 }

@@ -60,8 +60,8 @@ namespace UV_DLP_3D_Printer
             {
                 DebugLogger.Instance().LogRecord("got connection from ProfiLab");
                 m_stream.EndWaitForConnection(asyncResult);
-                m_reader = new StreamReader(m_stream);
-                m_writer = new StreamWriter(m_stream);
+                m_reader = new StreamReader(m_stream, System.Text.Encoding.Unicode);
+                m_writer = new StreamWriter(m_stream, System.Text.Encoding.Unicode);
                 m_writer.WriteLine("CONNECT CreationWorkshop");
                 m_writer.Flush();
             }
