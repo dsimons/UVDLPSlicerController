@@ -300,6 +300,10 @@ void _stdcall HandleCancel() {
 	stop = true;
 }
 
+void _stdcall HandleLayer(wchar_t *message) {
+	// TODO: parse out LAYER X\n and set output
+}
+
 // called whenever we get a message.
 // Decides what to do with the message received by sending it to HandleXXX().
 void _stdcall HandleMessage(wchar_t *message) {
@@ -310,6 +314,8 @@ void _stdcall HandleMessage(wchar_t *message) {
 		HandlePause();
 	} else if (wcsncmp(message, L"CANCEL", 5) == 0) {
 		HandleCancel();
+	} else if (wcsncmp(message, L"LAYER", 5) == 0) {
+		HandleLayer(message);
 	}
 }
 

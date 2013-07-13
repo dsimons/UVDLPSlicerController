@@ -175,5 +175,47 @@ namespace UV_DLP_3D_Printer
                 DebugLogger.Instance().LogRecord("could not send CANCEL to ProfiLab");
             }
         }
+
+        public void SetLayer(int layernum)
+        {
+            if (this.Connected && m_stream.IsConnected)
+            {
+                m_writer.WriteLineAsync("LAYER "+layernum); m_writer.FlushAsync();
+                DebugLogger.Instance().LogRecord("sent LAYER "+layernum+" to ProfiLab");
+            }
+            else
+            {
+                DebugLogger.Instance().LogRecord("could not send LAYER "+layernum+" to ProfiLab");
+            }
+        }
+
+        internal void PrintStatus(ePrintStat printstat)
+        {
+            switch (printstat)
+            {
+                case ePrintStat.ePrintPaused:
+                    PausePrint();
+                    break;
+                case ePrintStat.ePrintResumed:
+                    StartPrint();
+                    break;
+                case ePrintStat.ePrintCancelled:
+                    CancelPrint();
+                    break;
+                case ePrintStat.eLayerCompleted:
+                    break;
+                case ePrintStat.ePrintCompleted:
+                    CancelPrint();
+                    break;
+                case ePrintStat.ePrintStarted:
+                    StartPrint();
+                    break;
+            }
+        }
+
+        internal void PrintLayer(System.Drawing.Bitmap bmplayer, int layernum, int layertype)
+        {
+            SetLayer(layernum);
+        }
     }
 }

@@ -747,8 +747,6 @@ namespace UV_DLP_3D_Printer
             {
                 UVDLPApp.Instance().m_buildmgr.StartPrint(UVDLPApp.Instance().m_slicefile, UVDLPApp.Instance().m_gcode);
             }
-
-            UVDLPApp.Instance().m_namedpipedriver.StartPrint();
         }
         private void cmdPause_Click(object sender, EventArgs e)
         {
@@ -821,7 +819,6 @@ namespace UV_DLP_3D_Printer
         private void cmdStop_Click(object sender, EventArgs e)
         {
             UVDLPApp.Instance().m_buildmgr.CancelPrint();
-            UVDLPApp.Instance().m_namedpipedriver.CancelPrint();
         }
 
         
@@ -1329,7 +1326,6 @@ namespace UV_DLP_3D_Printer
         private void cmdPause_Click_1(object sender, EventArgs e)
         {
             UVDLPApp.Instance().m_buildmgr.PausePrint();
-            UVDLPApp.Instance().m_namedpipedriver.PausePrint();
         }
 
         private void printToolStripMenuItem_Click(object sender, EventArgs e)

@@ -335,6 +335,8 @@ namespace UV_DLP_3D_Printer
             }
             m_namedpipedriver = new NamedPipeDriver();
             m_namedpipedriver.Connect();
+            m_buildmgr.PrintStatus += new delPrintStatus(m_namedpipedriver.PrintStatus);
+            m_buildmgr.PrintLayer += new delPrinterLayer(m_namedpipedriver.PrintLayer);
             DebugLogger.Instance().LogRecord("Started named pipe driver");
         }
 
