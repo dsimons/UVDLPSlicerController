@@ -1,195 +1,30 @@
 #include "stdafx.h"
-#include "ProjectImage.h"
+#include "NamedPipeToProfilab.h"
 
-// Input Channel mappings.
-// hiermee maak je de kans op fouten kleiner omdat dit makkelijker leesbaar is. Je ziet sneller
-// een fout als je IN_NEXT_IMAGE ziet als kanaal nummer dan als je 2 ziet als vaste waarde.
-const unsigned _int8 IN_ENABLE_LAMP = 0; // unused
-const unsigned _int8 IN_RESET       = 1; // unused
-const unsigned _int8 IN_NEXT_IMAGE  = 2; // unused
-
-const unsigned _int8 NUM_INPUTS     = 3;
-
-// Output Channel mappings
-// Een naam voor elk kanaal nummer voor de leesbaarheid.
-const unsigned _int8 OUT_LAMP_ACTIVE   = 0; // unused
-const unsigned _int8 OUT_IMG_AVAILABLE = 1; // unused
-// Max aantal plaatjes: 4095
-const unsigned _int8 OUT_CUR_IMG_B0    = 2; // 1ste bit (1), unused
-const unsigned _int8 OUT_CUR_IMG_B1    = 3; // 2de bit (2), unused
-const unsigned _int8 OUT_CUR_IMG_B2    = 4; // 3de bit (4), unused
-const unsigned _int8 OUT_CUR_IMG_B3    = 5; // 4de bit (8), unused
-const unsigned _int8 OUT_CUR_IMG_B4    = 6; // 5de bit (16), unused
-const unsigned _int8 OUT_CUR_IMG_B5    = 7; // 6de bit (32), unused
-const unsigned _int8 OUT_CUR_IMG_B6    = 8; // 7de bit (64), unused
-const unsigned _int8 OUT_CUR_IMG_B7    = 9; // 8ste bit (128), unused
-const unsigned _int8 OUT_CUR_IMG_B8    = 10; // 9de bit (256), unused
-const unsigned _int8 OUT_CUR_IMG_B9    = 11; // 10de bit (512), unused
-const unsigned _int8 OUT_CUR_IMG_B10   = 12; // 11de bit (1024), unused
-const unsigned _int8 OUT_CUR_IMG_B11   = 13; // 12de bit (2048), unused
-
-// ui commands from creation workshop
-const unsigned _int8 OUT_START         = 14;
-const unsigned _int8 OUT_PAUSE         = 15;
-const unsigned _int8 OUT_STOP          = 16;
-
-// whether we have an active named pipe connection
-const unsigned _int8 OUT_PCONNECT      = 17;
-
-const unsigned _int8 NUM_OUTPUTS       = 18;
-
-// Output binary waarde, je kan elk output kanaal instellen met 0 of 5 en 5 is high.
-const double LOW = 0;
-const double HIGH = 5;
-const double SWITCH_LEVEL = 2.5; // Laag is < 2.5 hoog is > 2.5 volgens specificatie PROFILAB
 
 
 // Aanroep PROFILAB, hiermee bepaalt PROFILAB hoeveel inputs er zijn
-PROJECTIMAGE_API unsigned char _stdcall NumInputs()
+NAMED_PIPE_TO_PROFILAB_API unsigned char _stdcall NumInputs()
 {
-	return NUM_INPUTS;
+	return 0;
 }
 
 // Aanroep van PROFILAB om het aantal uitgangen te tellen
-PROJECTIMAGE_API unsigned char _stdcall NumOutputs()
+NAMED_PIPE_TO_PROFILAB_API unsigned char _stdcall NumOutputs()
 {
 	return NUM_OUTPUTS;
 }
 
 // Hier wordt door PROFILAB voor elke ingang de naam opgehaald
-PROJECTIMAGE_API void _stdcall GetInputName(unsigned _int8 Channel, unsigned char *Name) {
-	// Met switch wordt de meegegeven waarde gecontroleerd en gematched met een waarde die bij de case staat.
-	// Aan het einde van elke case staat break; om ervoor te zorgen dat hij niet verder gaat naar de volgende.
-	switch (Channel) {
-	case IN_ENABLE_LAMP:
-		Name[0] = 'L';
-		Name[1] = 'A';
-		Name[2] = 'M';
-		Name[3] = 'P';
-		Name[4] = '_';
-		Name[5] = 'E';
-		Name[6] = 'N';
-		Name[7] = 0;
-		break;
-	case IN_RESET:
-		Name[0] = 'R';
-		Name[1] = 'S';
-		Name[2] = 'T';
-		Name[3] = 0;
-		Name[4] = 0;
-		Name[5] = 0;
-		Name[6] = 0;
-		Name[7] = 0;
-		break;
-	case IN_NEXT_IMAGE:
-		Name[0] = 'N';
-		Name[1] = 'E';
-		Name[2] = 'X';
-		Name[3] = 'T';
-		Name[4] = '_';
-		Name[5] = 'I';
-		Name[6] = 'M';
-		Name[7] = 'G';
-		Name[8] = 0;
-		break;
-	}
+NAMED_PIPE_TO_PROFILAB_API void _stdcall GetInputName(unsigned _int8 Channel, unsigned char *Name)
+{
+	
 }
 
 // Hiermee bepaalt PROFILAB de Namen van de uitgangen
-PROJECTIMAGE_API void _stdcall GetOutputName(unsigned _int8 Channel, unsigned char *Name) {
+NAMED_PIPE_TO_PROFILAB_API void _stdcall GetOutputName(unsigned _int8 Channel, unsigned char *Name)
+{
 	switch (Channel) {
-	case OUT_IMG_AVAILABLE:
-		Name[0] = 'I';
-		Name[1] = 'M';
-		Name[2] = 'G';
-		Name[3] = '_';
-		Name[4] = 'A';
-		Name[5] = 'V';
-		Name[6] = 'L';
-		Name[7] = 0;
-		break;
-	case OUT_LAMP_ACTIVE:
-		Name[0] = 'L';
-		Name[1] = 'A';
-		Name[2] = 'M';
-		Name[3] = 'P';
-		Name[4] = '_';
-		Name[5] = 'O';
-		Name[6] = 'N';
-		Name[7] = 0;
-		break;
-	case OUT_CUR_IMG_B0:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '0';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B1:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '1';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B2:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '2';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B3:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '3';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B4:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '4';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B5:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '5';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B6:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '6';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B7:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '7';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B8:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '8';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B9:
-		Name[0] = 'B';
-		Name[1] = '0';
-		Name[2] = '9';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B10:
-		Name[0] = 'B';
-		Name[1] = '1';
-		Name[2] = '0';
-		Name[3] = 0;
-		break;
-	case OUT_CUR_IMG_B11:
-		Name[0] = 'B';
-		Name[1] = '1';
-		Name[2] = '1';
-		Name[3] = 0;
-		break;
 	case OUT_START:
 		Name[0] = 'S';
 		Name[1] = 'T';
@@ -211,7 +46,17 @@ PROJECTIMAGE_API void _stdcall GetOutputName(unsigned _int8 Channel, unsigned ch
 		Name[1] = 'T';
 		Name[2] = 'O';
 		Name[3] = 'P';
-		Name[3] = 0;
+		Name[4] = 0;
+		break;
+	case OUT_SIG_PRINT:
+		Name[0] = 'S';
+		Name[1] = 'I';
+		Name[2] = 'G';
+		Name[3] = '_';
+		Name[4] = 'P';
+		Name[5] = 'R';
+		Name[6] = 'I';
+		Name[7] = 0;
 		break;
 	case OUT_PCONNECT:
 		Name[0] = 'P';
@@ -227,12 +72,13 @@ PROJECTIMAGE_API void _stdcall GetOutputName(unsigned _int8 Channel, unsigned ch
 // Because these variables are declared globally in the DLL, we
 // can only use this DLL _once_. If that ever needs changing, we
 // would need to move this state information into the PUser
-// memorz block
+// memory block
 
 BOOL start    = false;
 BOOL pause    = false;
 BOOL stop     = true;
 BOOL pconnect = false;
+BOOL print_signal = false;
 
 HANDLE pipe                   = INVALID_HANDLE_VALUE;
 const wchar_t *pipeName       = L"\\\\.\\pipe\\3dPrinter";
@@ -266,7 +112,7 @@ LPWSTR ErrorMessage(DWORD error) {
 // helper function to log errors to a file as well as show an alert window
 void _stdcall LogError(wchar_t *message) {
 	FILE *logFile;
-	fopen_s(&logFile, "C:\\tmp\\ProjectImage.txt", "a+");
+	fopen_s(&logFile, "NamedPipe.txt", "a+");
 	fwprintf_s(logFile, L"ERROR: %s\n", message);
 	fclose(logFile);
 	MessageBoxW(NULL,message,L"ProjectImage Error", MB_OK);
@@ -275,7 +121,7 @@ void _stdcall LogError(wchar_t *message) {
 // helper function to log informational status to a file
 void _stdcall LogMessage(wchar_t *message) {
 	FILE *logFile;
-	fopen_s(&logFile, "C:\\tmp\\ProjectImage.txt", "a+");
+	fopen_s(&logFile, "NamedPipe.txt", "a+");
 	fwprintf_s(logFile, L"INFO: %s\n", message);
 	fclose(logFile);
 	//MessageBoxW(NULL,message,L"ProjectImage Message", MB_OK);
@@ -300,8 +146,11 @@ void _stdcall HandleCancel() {
 	stop = true;
 }
 
-void _stdcall HandleLayer(wchar_t *message) {
-	// TODO: parse out LAYER X\n and set output
+void _stdcall PrintSignal() {
+	if (print_signal) {
+		MessageBoxW(NULL,L"Synchronisation error, print_signal received before previous was handled. Check delay between slice settings.",L"Named Pipe Error", MB_OK);
+	}
+	print_signal = true;
 }
 
 // called whenever we get a message.
@@ -314,8 +163,8 @@ void _stdcall HandleMessage(wchar_t *message) {
 		HandlePause();
 	} else if (wcsncmp(message, L"CANCEL", 5) == 0) {
 		HandleCancel();
-	} else if (wcsncmp(message, L"LAYER", 5) == 0) {
-		HandleLayer(message);
+	} else if (wcsncmp(message, L"LAYER_COMPLETED", 15) == 0) {
+		PrintSignal();
 	}
 }
 
@@ -456,17 +305,18 @@ void _stdcall ConnectPipe(double *PInput, double *POutput) {
 		// we managed to connect to creation workshop
 		pconnect = true;
 		POutput[OUT_PCONNECT] = HIGH;
-		ReadPipe(PInput, POutput);
 	}
 }
 
 // Wordt door profilab aangeroepen als de simulatie gestart wordt, initializatie code
-PROJECTIMAGE_API void _stdcall CSimStart(double *PInput, double *POutput, double *PUser) {
+NAMED_PIPE_TO_PROFILAB_API void _stdcall CSimStart(double *PInput, double *POutput, double *PUser)
+{
 	ConnectPipe(PInput, POutput);
 }
 
 // Dit is de functie die het werkelijke rekenwerk van de DLL doet. Wordt door PROFILAB aangeroepen.
-PROJECTIMAGE_API void _stdcall CCalculate(double *PInput, double *POutput, double *PUser) {
+NAMED_PIPE_TO_PROFILAB_API void _stdcall CCalculate(double *PInput, double *POutput, double *PUser)
+{
 	// De PInput bevat een array met NUM_INPUTS double waardes voor elke input (double is double precision floating point)
 	// de betekenis kan je halen uit de definities helemaal bovenaan.
 
@@ -489,16 +339,24 @@ PROJECTIMAGE_API void _stdcall CCalculate(double *PInput, double *POutput, doubl
 	POutput[OUT_PAUSE] = pause ? HIGH : LOW;
 	POutput[OUT_STOP] = stop ? HIGH : LOW;
 	POutput[OUT_PCONNECT] = pconnect ? HIGH : LOW;
+
+	// Sync signalling. After each layer a short signal is placed on the output.
+	if (print_signal) {
+		POutput[OUT_SIG_PRINT] = HIGH;
+		print_signal = false; // Pulse, next pass this will go back to LOW
+	} else {
+		POutput[OUT_SIG_PRINT] = LOW;
+	}
 }
 
 // Dit is de functie die aangeroepen wordt door PROFILAB als de simulatie stopt, voor het opruimen van gebruikte resources
-PROJECTIMAGE_API void _stdcall CSimStop(double *PInput, double *POutput, double *PUser)
+NAMED_PIPE_TO_PROFILAB_API void _stdcall CSimStop(double *PInput, double *POutput, double *PUser)
 {
 	DisconnectPipe(PInput, POutput);
 }
 
 // Dit is voor het configuratiemenu binnen PROFILAB, hier kan een scherm gemaakt worden om configuratie instellingen te doen.
-PROJECTIMAGE_API void _stdcall CConfigure(double *PUser)
+NAMED_PIPE_TO_PROFILAB_API void _stdcall CConfigure(double *PUser)
 {
-	MessageBoxW(NULL,L"There are no settings",L"Project Image DLL Config", MB_OK);
+	MessageBoxW(NULL,L"There are no settings",L"Named Pipe DLL Config", MB_OK);
 }

@@ -11,10 +11,11 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using UV_DLP_3D_Printer.Drivers;
 
 namespace UV_DLP_3D_Printer
 {
-    public class NamedPipeDriver
+    public class NamedPipeDriver : DeviceDriver
     {
         public bool Connected { get; set; }
         public NamedPipeServerStream m_stream = null;
@@ -24,10 +25,11 @@ namespace UV_DLP_3D_Printer
 
         public NamedPipeDriver()
         {
+            m_drivertype = eDriverType.NAMED_PIPE_DRIVER;
             this.Connected = false;
         }
 
-        public void Disconnect()
+        public override bool Disconnect()
         {
             if (this.Connected)
             {
@@ -43,6 +45,7 @@ namespace UV_DLP_3D_Printer
             {
                 DebugLogger.Instance().LogRecord("was already disconnected from ProfiLab");
             }
+            return true;
         }
 
         public IAsyncResult ConnectStream()
@@ -88,12 +91,12 @@ namespace UV_DLP_3D_Printer
             m_writer = null;
         }
 
-        public void Connect()
+        public override bool Connect()
         {
             if (this.Connected)
             {
                 DebugLogger.Instance().LogRecord("already connected to ProfiLab");
-                return;
+                return true;
             }
 
             this.Connected = true;
@@ -135,6 +138,7 @@ namespace UV_DLP_3D_Printer
                     this.Connected = false;
                 }
             });
+            return true;
         }
 
         public void StartPrint()
@@ -216,6 +220,16 @@ namespace UV_DLP_3D_Printer
         internal void PrintLayer(System.Drawing.Bitmap bmplayer, int layernum, int layertype)
         {
             SetLayer(layernum);
+        }
+
+        public override int Write(byte[] data, int len)
+        {
+            throw new NotImplementedException();
+        }
+
+        public override int Write(string line)
+        {
+            throw new NotImplementedException();
         }
     }
 }

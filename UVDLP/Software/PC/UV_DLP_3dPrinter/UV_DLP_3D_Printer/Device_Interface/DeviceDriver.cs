@@ -18,6 +18,7 @@ namespace UV_DLP_3D_Printer.Drivers
         eNULL_DRIVER, // the driver for testing when a mavchine is not connected, it always returns OK
         eGENERIC, // whatever class of driver you call this, I've been using sailfish, and it seems to work great
         eRF_3DLPRINTER, // the Italian Robot Factory 3DLPrinter
+        NAMED_PIPE_DRIVER,
     }
     public enum eDeviceStatus 
     {

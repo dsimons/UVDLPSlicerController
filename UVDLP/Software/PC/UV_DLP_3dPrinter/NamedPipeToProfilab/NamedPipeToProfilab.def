@@ -1,4 +1,4 @@
-LIBRARY	"ProjectImage"
+LIBRARY	"NamedPipeToProfilab"
 EXPORTS
 NumInputs
 NumOutputs

@@ -18,6 +18,8 @@ namespace UV_DLP_3D_Printer.Drivers
                     return new GenericDriver();
                 case eDriverType.eRF_3DLPRINTER:
                     return new RobotFactorySRL_3DLPrinter();
+                case eDriverType.NAMED_PIPE_DRIVER:
+                    return new NamedPipeDriver();
                 default:
                     return null;
             }
