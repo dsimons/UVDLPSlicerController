@@ -182,7 +182,7 @@ void _stdcall DisconnectPipe(double *PInput, double *POutput) {
 // logs the error then disconnects the pipe
 void _stdcall HandleIOError(double *PInput, double *POutput, DWORD error) {
 	LPWSTR errMsg = ErrorMessage(error);
-	LogError(errMsg);
+	// LogError(errMsg); Default behaviour omdat het gewoon de server is die uit gaat.
 	DisconnectPipe(PInput, POutput);
 	LocalFree(errMsg);
 	memset(&pipeOverlapped,0,sizeof(pipeOverlapped)); // clear unused event handle
@@ -300,7 +300,7 @@ void _stdcall ConnectPipe(double *PInput, double *POutput) {
         DWORD error = GetLastError();
         LPWSTR errMsg = ErrorMessage(error);
 		LocalFree(errMsg);
-		LogError(L"Cannot connect to Creation Workshop");
+		LogMessage(lstrcat(L"Cannot connect to Creation Workshop: ", errMsg));
 	} else {
 		// we managed to connect to creation workshop
 		pconnect = true;
@@ -311,7 +311,11 @@ void _stdcall ConnectPipe(double *PInput, double *POutput) {
 // Wordt door profilab aangeroepen als de simulatie gestart wordt, initializatie code
 NAMED_PIPE_TO_PROFILAB_API void _stdcall CSimStart(double *PInput, double *POutput, double *PUser)
 {
-	ConnectPipe(PInput, POutput);
+	try {
+		ConnectPipe(PInput, POutput);
+	} catch (...) {
+		// Will keep trying to get connected
+	}
 }
 
 // Dit is de functie die het werkelijke rekenwerk van de DLL doet. Wordt door PROFILAB aangeroepen.
@@ -329,7 +333,15 @@ NAMED_PIPE_TO_PROFILAB_API void _stdcall CCalculate(double *PInput, double *POut
 	// 1 message, so it has to be called multiple times. We don't arrange
 	// for that ourselves, since ProfiLab knows to invoke CCalculate()
 	// frequently
-	ReadPipe(PInput, POutput);
+	if (pconnect) {
+		ReadPipe(PInput, POutput);
+	} else {
+		try {
+			ConnectPipe(PInput, POutput);
+		} catch (...) {
+			// Keep trying
+		}
+	}
 
 	// set the latest state as we understand it from creation workshop.
 	// Because of the async reading of messages, this state is up to 2
@@ -352,7 +364,9 @@ NAMED_PIPE_TO_PROFILAB_API void _stdcall CCalculate(double *PInput, double *POut
 // Dit is de functie die aangeroepen wordt door PROFILAB als de simulatie stopt, voor het opruimen van gebruikte resources
 NAMED_PIPE_TO_PROFILAB_API void _stdcall CSimStop(double *PInput, double *POutput, double *PUser)
 {
-	DisconnectPipe(PInput, POutput);
+	if (pconnect) {
+		DisconnectPipe(PInput, POutput);
+	}
 }
 
 // Dit is voor het configuratiemenu binnen PROFILAB, hier kan een scherm gemaakt worden om configuratie instellingen te doen.

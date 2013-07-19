@@ -5,8 +5,9 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using UV_DLP_3D_Printer.Device_Interface;
 
-namespace ManualProfilabController
+namespace UV_DLP_3D_Printer.Device_Interface
 {
     class NamedPipeServer
     {
@@ -27,6 +28,9 @@ namespace ManualProfilabController
 
         public void Start()
         {
+            if (_running) {
+                return;
+            }
             _running = true;
             _serverThread = new Thread(Run);
             _serverThread.Start();
@@ -34,8 +38,10 @@ namespace ManualProfilabController
 
         public void Stop()
         {
-            _running = false;
-            _serverThread.Interrupt();
+            if (_running) {
+                _running = false;
+                _serverThread.Interrupt();
+            }
         }
 
         public void Send(string message)
@@ -58,9 +64,9 @@ namespace ManualProfilabController
                     _server = new NamedPipeServerStream(_pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
                     _writer = new StreamWriter(_server, Encoding.Unicode);
                     _waiting = true;
-                    _server.BeginWaitForConnection(waiting_callback, 1);
+                    _server.BeginWaitForConnection(waiting_callback, null);
                     while (_waiting) {
-                        Thread.Sleep(500);
+                        Thread.Sleep(100);
                     }
                     _connected = true;
                     OnConnectionChanged();
@@ -72,7 +78,7 @@ namespace ManualProfilabController
                             OnConnectionChanged();
                             break;
                         }
-                        Thread.Sleep(1000);
+                        Thread.Sleep(250);
                     }
                 }
             } catch (ThreadInterruptedException) {

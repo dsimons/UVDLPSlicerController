@@ -47,7 +47,7 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
-    <OutputPath>bin\Release\</OutputPath>
+    <OutputPath>..\Release\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -85,8 +85,10 @@
     <Compile Include="Configs\ConnectionConfig.cs" />
     <Compile Include="Configs\DeviceDriverConfig.cs" />
     <Compile Include="Configs\ParmList.cs" />
+    <Compile Include="Device_Interface\ConnectionStatusEventArgs.cs" />
     <Compile Include="Device_Interface\DeviceDriver.cs" />
     <Compile Include="Device_Interface\NamedPipeDriver.cs" />
+    <Compile Include="Device_Interface\NamedPipeServer.cs" />
     <Compile Include="Device_Interface\NULLdriver.cs" />
     <Compile Include="Device_Interface\DriverFactory.cs" />
     <Compile Include="Device_Interface\GenericDriver.cs" />

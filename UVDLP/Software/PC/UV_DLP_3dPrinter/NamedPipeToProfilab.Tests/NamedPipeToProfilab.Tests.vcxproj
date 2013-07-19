@@ -47,7 +47,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>C:\Projecten\UVDLPSlicerController\UVDLP\Software\PC\ProfiLab_dll\ProjectImage\ProjectImage;$(IncludePath)</IncludePath>
+    <IncludePath>..\NamedPipeToProfilab;$(IncludePath)</IncludePath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>

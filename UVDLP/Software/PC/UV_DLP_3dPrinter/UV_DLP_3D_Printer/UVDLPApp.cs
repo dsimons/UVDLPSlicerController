@@ -47,8 +47,6 @@ namespace UV_DLP_3D_Printer
         public SliceBuildConfig m_buildparms;
         // the interface to the printer
         public DeviceInterface m_deviceinterface;// = new PrinterInterface();
-        // the interface to the named pipe printer driver
-        public NamedPipeDriver m_namedpipedriver;
         // the generated or loaded GCode File;
         public GCodeFile m_gcode;
         // the slicer we're using 
@@ -322,23 +320,6 @@ namespace UV_DLP_3D_Printer
             }
         }
 
-        public void SetupNamedPipe()
-        {
-            // todo this should be a regular driver
-            DebugLogger.Instance().LogRecord("Starting named pipe driver");
-            if (m_namedpipedriver != null) {
-                DebugLogger.Instance().LogRecord("Named pipe driver was already started, disconnecting and replacing");
-                if (m_namedpipedriver.Connected == true)
-                {
-                    m_namedpipedriver.Disconnect();
-                }
-            }
-            m_namedpipedriver = new NamedPipeDriver();
-            m_namedpipedriver.Connect();
-            m_buildmgr.PrintStatus += new delPrintStatus(m_namedpipedriver.PrintStatus);
-            m_buildmgr.PrintLayer += new delPrinterLayer(m_namedpipedriver.PrintLayer);
-            DebugLogger.Instance().LogRecord("Started named pipe driver");
-        }
 
         public void SetupDriver()
         {
@@ -408,7 +389,6 @@ namespace UV_DLP_3D_Printer
             }
 
             SetupDriver();
-            SetupNamedPipe();
         }
 
     }

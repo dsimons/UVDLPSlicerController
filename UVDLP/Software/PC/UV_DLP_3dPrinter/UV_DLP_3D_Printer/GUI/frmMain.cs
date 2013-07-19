@@ -135,6 +135,9 @@ namespace UV_DLP_3D_Printer
         }
         private void SetButtonStatuses() 
         {
+            if (this.InvokeRequired) {
+                this.Invoke(new MethodInvoker(SetButtonStatuses));
+            }
             if (UVDLPApp.Instance().m_deviceinterface.Connected)
             {
                 cmdConnect.Enabled = false;

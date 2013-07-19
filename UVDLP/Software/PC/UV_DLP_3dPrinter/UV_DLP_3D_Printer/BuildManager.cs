@@ -231,6 +231,7 @@ namespace UV_DLP_3D_Printer
         {            
             int now = Environment.TickCount;
             int nextlayertime = 0;
+            bool printing_layer = false;
             while (m_running)
             {
                 switch (m_state) 
@@ -301,6 +302,7 @@ namespace UV_DLP_3D_Printer
                                 }
                                 else 
                                 {
+
                                     m_curlayer = layer;
                                     bmp = m_sf.RenderSlice(m_curlayer); // get the rendered image slice
                                 }
@@ -309,6 +311,10 @@ namespace UV_DLP_3D_Printer
                                 if (PrintLayer != null)
                                 {
                                     PrintLayer(bmp, m_curlayer, curtype);
+                                    if (printing_layer && layer == SLICE_BLANK) {
+                                        printing_layer = false;
+                                        PrintStatus(ePrintStat.eLayerCompleted);
+                                    }
                                 }
                             }                           
                         }

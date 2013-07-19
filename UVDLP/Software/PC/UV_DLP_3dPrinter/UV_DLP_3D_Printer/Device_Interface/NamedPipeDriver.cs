@@ -11,35 +11,46 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using UV_DLP_3D_Printer.Device_Interface;
 using UV_DLP_3D_Printer.Drivers;
 
-namespace UV_DLP_3D_Printer
+namespace UV_DLP_3D_Printer.Drivers
 {
     public class NamedPipeDriver : DeviceDriver
     {
-        public bool Connected { get; set; }
-        public NamedPipeServerStream m_stream = null;
-        public StreamReader m_reader;
-        public StreamWriter m_writer;
-        public ManualResetEvent m_signal;
+        public bool Connected { get { return m_connected; } }
+
+        private NamedPipeServer _server;
 
         public NamedPipeDriver()
         {
             m_drivertype = eDriverType.NAMED_PIPE_DRIVER;
-            this.Connected = false;
+            m_connected = false;
+            UVDLPApp.Instance().m_buildmgr.PrintStatus += new delPrintStatus(PrintStatus);
+            UVDLPApp.Instance().m_buildmgr.PrintLayer += new delPrinterLayer(PrintLayer);
+            _server = new NamedPipeServer("3dPrinter");
+            _server.ConnectionStatusUpdated += _server_ConnectionStatusUpdated;
+        }
+
+        void _server_ConnectionStatusUpdated(object sender, ConnectionStatusEventArgs e)
+        {
+            m_connected = e.ClientConnected;
+            if (!m_connected) {
+                RaiseDeviceStatus(this, eDeviceStatus.eDisconnect);
+                DebugLogger.Instance().LogRecord("PROFILAB disconnected: Waiting for client to connect");
+            } else {
+                RaiseDeviceStatus(this, eDeviceStatus.eConnect);
+                DebugLogger.Instance().LogRecord("PROFILAB client has connected.");
+            }
         }
 
         public override bool Disconnect()
         {
             if (this.Connected)
             {
-                this.Connected = false;
-                m_signal.Set();
-                m_stream.Close();
-                m_stream.Dispose(); m_stream = null;
-                m_reader.Dispose(); m_reader = null;
-                m_writer.Dispose(); m_writer = null;
-                DebugLogger.Instance().LogRecord("disconnected from ProfiLab");
+                _server.Stop();
+                m_connected = false;
+                RaiseDeviceStatus(this, eDeviceStatus.eDisconnect);
             }
             else
             {
@@ -48,104 +59,32 @@ namespace UV_DLP_3D_Printer
             return true;
         }
 
-        public IAsyncResult ConnectStream()
-        {
-            // http://stackoverflow.com/questions/2700472/how-to-terminate-a-managed-thread-blocked-in-unmanaged-code
-            m_signal = new ManualResetEvent(false);
-
-            // mode MESSAGE?
-            m_stream = new NamedPipeServerStream("3dPrinter", PipeDirection.InOut, 1, PipeTransmissionMode.Byte, PipeOptions.Asynchronous);
-            IAsyncResult asyncResult = m_stream.BeginWaitForConnection(_ => m_signal.Set(), null);
-            DebugLogger.Instance().LogRecord("ready for connection from ProfiLab");
-            m_signal.WaitOne();
-
-            if (asyncResult.IsCompleted)
-            {
-                DebugLogger.Instance().LogRecord("got connection from ProfiLab");
-                m_stream.EndWaitForConnection(asyncResult);
-                m_reader = new StreamReader(m_stream, System.Text.Encoding.Unicode);
-                m_writer = new StreamWriter(m_stream, System.Text.Encoding.Unicode);
-                m_writer.WriteLine("CONNECT CreationWorkshop");
-                m_writer.Flush();
-            }
-            else
-            {
-                DebugLogger.Instance().LogRecord("no connection from ProfiLab");
-                DisconnectStream();
-            }
-            
-            return asyncResult;
-        }
-
-        public void DisconnectStream()
-        {
-            if (m_stream == null)
-            {
-                return;
-            }
-            DebugLogger.Instance().LogRecord("disconnect from ProfiLab");
-            m_stream.Disconnect();
-            m_stream.Close();
-            m_stream = null;
-            m_reader = null;
-            m_writer = null;
-        }
 
         public override bool Connect()
         {
-            if (this.Connected)
-            {
-                DebugLogger.Instance().LogRecord("already connected to ProfiLab");
+            if (m_connected) {
                 return true;
             }
-
-            this.Connected = true;
-
-            Task.Factory.StartNew(() =>
-            {
-                IAsyncResult asyncResult = ConnectStream();
-                if (asyncResult.IsCompleted)
-                {
-                    Task<string> t = null;
-
-                    while (this.Connected)
-                    {
-                        if (m_stream.IsConnected)
-                        {
-                            if (t == null)
-                            {
-                                t = m_reader.ReadLineAsync();
-                                t.Wait(100);
-                            }
-                            if (t.IsCompleted)
-                            {
-                                string result = t.Result;
-                                DebugLogger.Instance().LogRecord("PROFILAB: " + m_reader.ReadLine());
-                            }
-                        }
-                        else
-                        {
-                            t.Dispose(); // try to cancel
-                            t = null;
-                            DisconnectStream();
-                            ConnectStream();
-                        }
-                    }
-                    DisconnectStream();
+            DebugLogger.Instance().LogRecord("Starting named pipe driver");
+            _server.Start();
+            var count = 0;
+            while (!Connected) {
+                DebugLogger.Instance().LogRecord("Waiting for client to connect");
+                count++;
+                if (count > 20) {
+                    Disconnect();
+                    return false;
                 }
-                else
-                {
-                    this.Connected = false;
-                }
-            });
+                Thread.Sleep(1500);
+            }
             return true;
         }
 
         public void StartPrint()
         {
-            if (this.Connected && m_stream.IsConnected)
+            if (this.Connected)
             {
-                m_writer.WriteLineAsync("START"); m_writer.FlushAsync();
+                _server.Send("START");
                 DebugLogger.Instance().LogRecord("sent START to ProfiLab");
             }
             else
@@ -156,9 +95,9 @@ namespace UV_DLP_3D_Printer
 
         public void PausePrint()
         {
-            if (this.Connected && m_stream.IsConnected)
+            if (this.Connected)
             {
-                m_writer.WriteLineAsync("PAUSE"); m_writer.FlushAsync();
+                _server.Send("PAUSE");
                 DebugLogger.Instance().LogRecord("sent PAUSE to ProfiLab");
             }
             else
@@ -169,27 +108,14 @@ namespace UV_DLP_3D_Printer
 
         public void CancelPrint()
         {
-            if (this.Connected && m_stream.IsConnected)
+            if (this.Connected)
             {
-                m_writer.WriteLineAsync("CANCEL"); m_writer.FlushAsync();
+                _server.Send("CANCEL");
                 DebugLogger.Instance().LogRecord("sent CANCEL to ProfiLab");
             }
             else
             {
                 DebugLogger.Instance().LogRecord("could not send CANCEL to ProfiLab");
-            }
-        }
-
-        public void SetLayer(int layernum)
-        {
-            if (this.Connected && m_stream.IsConnected)
-            {
-                m_writer.WriteLineAsync("LAYER "+layernum); m_writer.FlushAsync();
-                DebugLogger.Instance().LogRecord("sent LAYER "+layernum+" to ProfiLab");
-            }
-            else
-            {
-                DebugLogger.Instance().LogRecord("could not send LAYER "+layernum+" to ProfiLab");
             }
         }
 
@@ -207,6 +133,7 @@ namespace UV_DLP_3D_Printer
                     CancelPrint();
                     break;
                 case ePrintStat.eLayerCompleted:
+                    SignalLayerCompleted();
                     break;
                 case ePrintStat.ePrintCompleted:
                     CancelPrint();
@@ -217,19 +144,30 @@ namespace UV_DLP_3D_Printer
             }
         }
 
+        private void SignalLayerCompleted()
+        {
+            // Sync signal
+            if (this.Connected) {
+                _server.Send("LAYER_COMPLETED");
+                DebugLogger.Instance().LogRecord("sent LAYER_COMPLETED to ProfiLab");
+            } else {
+                DebugLogger.Instance().LogRecord("could not send LAYER_COMPLETED to ProfiLab");
+            }
+        }
+
         internal void PrintLayer(System.Drawing.Bitmap bmplayer, int layernum, int layertype)
         {
-            SetLayer(layernum);
+            // OK
         }
 
         public override int Write(byte[] data, int len)
         {
-            throw new NotImplementedException();
+            return len; // Don't care
         }
 
         public override int Write(string line)
         {
-            throw new NotImplementedException();
+            return line.Length; //Don't care
         }
     }
 }
