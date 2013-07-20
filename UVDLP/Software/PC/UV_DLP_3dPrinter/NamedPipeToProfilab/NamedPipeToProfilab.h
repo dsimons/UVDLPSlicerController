@@ -1,5 +1,7 @@
 #ifdef EXPORTS
 #define NAMED_PIPE_TO_PROFILAB_API extern "C" __declspec(dllexport)
+// Internal DLL use only
+void WriteToPipe(wchar_t *message);
 #else
 #define NAMED_PIPE_TO_PROFILAB_API extern "C" __declspec(dllimport)
 #endif
@@ -26,3 +28,6 @@ const unsigned _int8 NUM_OUTPUTS  = 5;
 const double LOW = 0;
 const double HIGH = 5;
 const double SWITCH_LEVEL = 2.5; // Laag is < 2.5 hoog is > 2.5 volgens specificatie PROFILAB
+
+const unsigned _int8 NUM_INPUTS = 1;
+const unsigned _int8 IN_RDY = 0;

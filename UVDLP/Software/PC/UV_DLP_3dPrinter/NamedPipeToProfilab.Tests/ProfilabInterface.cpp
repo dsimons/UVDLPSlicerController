@@ -12,7 +12,7 @@ namespace NamedPipeToProfilabTests
 		
 		TEST_METHOD(TestNumInputsAndOutputs)
 		{
-			Assert::AreEqual((unsigned char)0, ::NumInputs());
+			Assert::AreEqual((unsigned char)1, ::NumInputs());
 			Assert::AreEqual((unsigned char)5, ::NumOutputs());
 		}
 
@@ -64,6 +64,47 @@ namespace NamedPipeToProfilabTests
 
 		}
 
+		TEST_METHOD(TestGetReadyStatus)
+		{
+			double* in = (double*)malloc(200 * sizeof(double));
+			double* out = (double*)malloc(200 * sizeof(double));
+			double* user = (double*)malloc(200 * sizeof(double));
+			
+			HANDLE pipe = OpenPipe();
+
+			::CSimStart(in, out, user);
+
+			ConnectNamedPipe(pipe, NULL); // Block until DLL connected
+
+			memset(in, 0, 200 * sizeof(double));
+
+			WriteToPipe(pipe, L"GET_READY_STATUS");
+			in[IN_RDY] = 0;
+			::CCalculate(in, out, user);
+			WCHAR pipeBuffer[128];
+			memset(pipeBuffer, 0, 128 * sizeof(WCHAR));
+			if (ReadFromPipe(pipe, pipeBuffer, 128)) { 
+				Assert::AreEqual(L"BUSY", pipeBuffer);
+			}
+
+			WriteToPipe(pipe, L"GET_READY_STATUS");
+
+			in[IN_RDY] = 5;
+			::CCalculate(in, out, user);
+			memset(pipeBuffer, 0, 128 * sizeof(WCHAR));
+			if (ReadFromPipe(pipe, pipeBuffer, 128)) { 
+				Assert::AreEqual(L"READY", pipeBuffer);
+			}
+			
+			::CSimStop(in, out, user);
+
+			CloseHandle(pipe);
+			
+			free(in);
+			free(out);
+			free(user);
+		}
+
 		HANDLE OpenPipe()
 		{
 			return CreateNamedPipe(
@@ -87,6 +128,12 @@ namespace NamedPipeToProfilabTests
 				&numBytesWritten, // will store actual amount of data sent
 				NULL // not using overlapped IO
 			);
+		}
+
+		bool ReadFromPipe(HANDLE pipe, LPWSTR pipeBuffer, DWORD size) {
+			DWORD numBytesRead = 0;
+			BOOL pipeResult = ReadFile(pipe, pipeBuffer, size, &numBytesRead, 0);
+			return pipeResult;
 		}
 
 	};

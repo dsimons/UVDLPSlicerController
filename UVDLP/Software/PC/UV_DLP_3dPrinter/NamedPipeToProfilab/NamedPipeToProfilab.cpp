@@ -6,7 +6,7 @@
 // Aanroep PROFILAB, hiermee bepaalt PROFILAB hoeveel inputs er zijn
 NAMED_PIPE_TO_PROFILAB_API unsigned char _stdcall NumInputs()
 {
-	return 0;
+	return NUM_INPUTS;
 }
 
 // Aanroep van PROFILAB om het aantal uitgangen te tellen
@@ -18,7 +18,14 @@ NAMED_PIPE_TO_PROFILAB_API unsigned char _stdcall NumOutputs()
 // Hier wordt door PROFILAB voor elke ingang de naam opgehaald
 NAMED_PIPE_TO_PROFILAB_API void _stdcall GetInputName(unsigned _int8 Channel, unsigned char *Name)
 {
-
+	switch(Channel) {
+	case IN_RDY:
+		Name[0] = 'R';
+		Name[1] = 'D';
+		Name[2] = 'Y';
+		Name[3] = 0;
+		break;
+	}
 }
 
 // Hiermee bepaalt PROFILAB de Namen van de uitgangen
@@ -87,6 +94,7 @@ wchar_t pipeBuffer[BUF_SIZE];
 BOOL pipeResult;
 OVERLAPPED pipeOverlapped     = {0};
 BOOL pipeIOWait               = false;
+BOOL ready = true;
 
 
 
@@ -136,7 +144,9 @@ void _stdcall HandleStart() {
 
 // called whenever we get a PAUSE message
 void _stdcall HandlePause() {
+	start = false;
 	pause = true;
+	stop = false;
 }
 
 // called whenever we get a CANCEL message
@@ -153,6 +163,14 @@ void _stdcall PrintSignal() {
 	print_signal = true;
 }
 
+void _stdcall PostBackReadyStatus() {
+	if (ready) {
+		WriteToPipe(L"READY");
+	} else {
+		WriteToPipe(L"BUSY");
+	}
+}
+
 // called whenever we get a message.
 // Decides what to do with the message received by sending it to HandleXXX().
 void _stdcall HandleMessage(wchar_t *message) {
@@ -161,10 +179,12 @@ void _stdcall HandleMessage(wchar_t *message) {
 		HandleStart();
 	} else if (wcsncmp(message, L"PAUSE", 5) == 0) {
 		HandlePause();
-	} else if (wcsncmp(message, L"CANCEL", 5) == 0) {
+	} else if (wcsncmp(message, L"CANCEL", 6) == 0) {
 		HandleCancel();
 	} else if (wcsncmp(message, L"LAYER_COMPLETED", 15) == 0) {
 		PrintSignal();
+	} else if (wcsncmp(message, L"GET_READY_STATUS", 16) == 0) {
+		PostBackReadyStatus();
 	}
 }
 
@@ -274,6 +294,19 @@ void _stdcall ReadPipe(double *PInput, double *POutput) {
 	}
 }
 
+void WriteToPipe(wchar_t *message) {
+	if (pipe != INVALID_HANDLE_VALUE) {
+		DWORD numBytesWritten = 0;
+		WriteFile(
+			pipe, // handle to our outbound pipe
+			message, // data to send
+			wcslen(message) * sizeof(wchar_t), // length of data to send (bytes)
+			&numBytesWritten, // will store actual amount of data sent
+			NULL // not using overlapped IO
+		);
+	}
+}
+
 // function to set up named pipe client to connect to creation workshop
 void _stdcall ConnectPipe(double *PInput, double *POutput) {
 	// set the pconnect output to 0 to indicate we aren't connected
@@ -328,6 +361,14 @@ NAMED_PIPE_TO_PROFILAB_API void _stdcall CCalculate(double *PInput, double *POut
 
 	// De PUser is een user area met geheugen om in te werken. Hier is ruimte voor maximaal 100 doubles en deze
 	// dll is er zelf verantwoordelijk voor om dit geheugen te managen.
+
+	
+	// Check input ready status before handling pipe requests
+	if (PInput[IN_RDY] < SWITCH_LEVEL) {
+		ready = false;
+	} else {
+		ready = true;
+	}
 
 	// read messages from the pipe to creation workshop. This reads 0 or
 	// 1 message, so it has to be called multiple times. We don't arrange

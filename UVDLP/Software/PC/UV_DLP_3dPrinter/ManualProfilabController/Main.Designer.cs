@@ -34,6 +34,8 @@
             this.btnStartStop = new System.Windows.Forms.Button();
             this.btnPause = new System.Windows.Forms.Button();
             this.btnPrintSig = new System.Windows.Forms.Button();
+            this.label2 = new System.Windows.Forms.Label();
+            this.shpClientReady = new Microsoft.VisualBasic.PowerPacks.OvalShape();
             this.SuspendLayout();
             // 
             // label1
@@ -51,6 +53,7 @@
             this.shapeContainer1.Margin = new System.Windows.Forms.Padding(0);
             this.shapeContainer1.Name = "shapeContainer1";
             this.shapeContainer1.Shapes.AddRange(new Microsoft.VisualBasic.PowerPacks.Shape[] {
+            this.shpClientReady,
             this.shpConnected});
             this.shapeContainer1.Size = new System.Drawing.Size(204, 223);
             this.shapeContainer1.TabIndex = 1;
@@ -94,11 +97,29 @@
             this.btnPrintSig.UseVisualStyleBackColor = true;
             this.btnPrintSig.Click += new System.EventHandler(this.btnPrintSig_Click);
             // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(16, 41);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(99, 13);
+            this.label2.TabIndex = 6;
+            this.label2.Text = "Profilab client ready";
+            // 
+            // shpClientReady
+            // 
+            this.shpClientReady.FillColor = System.Drawing.Color.Lime;
+            this.shpClientReady.FillStyle = Microsoft.VisualBasic.PowerPacks.FillStyle.Solid;
+            this.shpClientReady.Location = new System.Drawing.Point(166, 40);
+            this.shpClientReady.Name = "shpClientReady";
+            this.shpClientReady.Size = new System.Drawing.Size(20, 20);
+            // 
             // Main
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(204, 223);
+            this.Controls.Add(this.label2);
             this.Controls.Add(this.btnPrintSig);
             this.Controls.Add(this.btnPause);
             this.Controls.Add(this.btnStartStop);
@@ -121,6 +142,8 @@
         private System.Windows.Forms.Button btnStartStop;
         private System.Windows.Forms.Button btnPause;
         private System.Windows.Forms.Button btnPrintSig;
+        private Microsoft.VisualBasic.PowerPacks.OvalShape shpClientReady;
+        private System.Windows.Forms.Label label2;
     }
 }
 

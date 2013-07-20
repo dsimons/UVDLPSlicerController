@@ -5,6 +5,7 @@ using System.IO.Pipes;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace ManualProfilabController
 {
@@ -14,12 +15,15 @@ namespace ManualProfilabController
         private bool _running = false;
         private bool _connected = false;
         private bool _waiting = false;
+        private bool _clientReady = false;
         private NamedPipeServerStream _server;
         private StreamWriter _writer;
         private Thread _serverThread;
 
         public event EventHandler<ConnectionStatusEventArgs> ConnectionStatusUpdated;
-        
+        public event EventHandler<ClientReadyStatusEventArgs> ClientReadyStatusUpdated;
+        private StreamReader _reader;
+
         public NamedPipeServer(string name)
         {
             _pipeName = name;
@@ -46,17 +50,38 @@ namespace ManualProfilabController
             }
         }
 
+        public string Read()
+        {
+            try {
+                if (_reader != null) {
+                    var buffer = new char[256];
+                    var readbytescount = _reader.Read(buffer, 0, 256);
+                    if (readbytescount > 0) {
+                        return new string(buffer.Take(readbytescount).ToArray());
+                    } else {
+                        return null;
+                    }
+                } else {
+                    return null;
+                }
+            } catch {
+                return null;
+            }
+        }
+
         private void Run()
         {
             try {
                 while (_running) {
                     if (_server != null) {
                         _writer = null;
+                        _reader = null;
                         _server.Dispose();
                         _server = null;
                     }
                     _server = new NamedPipeServerStream(_pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
                     _writer = new StreamWriter(_server, Encoding.Unicode);
+                    _reader = new StreamReader(_server, Encoding.Unicode);
                     _waiting = true;
                     _server.BeginWaitForConnection(waiting_callback, 1);
                     while (_waiting) {
@@ -66,13 +91,13 @@ namespace ManualProfilabController
                     OnConnectionChanged();
                     while (_running) {
                         try {
-                            Send("PING");
+                            UpdateClientReadyStatus();
                         } catch {
                             _connected = false;
                             OnConnectionChanged();
                             break;
                         }
-                        Thread.Sleep(1000);
+                        Thread.Sleep(100);
                     }
                 }
             } catch (ThreadInterruptedException) {
@@ -82,7 +107,23 @@ namespace ManualProfilabController
                     _server = null;
                 }
             }
-         }
+        }
+
+        private void UpdateClientReadyStatus()
+        {
+            Send("GET_READY_STATUS");
+            var response = Read();
+            bool ready;
+            if (response == "READY") {
+                ready = true;
+            } else {
+                ready = false;
+            }
+            if (_clientReady != ready) {
+                _clientReady = ready;
+                OnClientReadyChanged();
+            }
+        }
 
         private void waiting_callback(IAsyncResult ar)
         {
@@ -100,6 +141,14 @@ namespace ManualProfilabController
             if (ConnectionStatusUpdated != null) {
                 var handle = ConnectionStatusUpdated;
                 handle(this, new ConnectionStatusEventArgs(_connected));
+            }
+        }
+
+        private void OnClientReadyChanged()
+        {
+            if (ClientReadyStatusUpdated != null) {
+                var handle = ClientReadyStatusUpdated;
+                handle(this, new ClientReadyStatusEventArgs(_clientReady));
             }
         }
     }
