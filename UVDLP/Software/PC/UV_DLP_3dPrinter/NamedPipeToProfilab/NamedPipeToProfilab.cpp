@@ -18,7 +18,7 @@ NAMED_PIPE_TO_PROFILAB_API unsigned char _stdcall NumOutputs()
 // Hier wordt door PROFILAB voor elke ingang de naam opgehaald
 NAMED_PIPE_TO_PROFILAB_API void _stdcall GetInputName(unsigned _int8 Channel, unsigned char *Name)
 {
-	
+
 }
 
 // Hiermee bepaalt PROFILAB de Namen van de uitgangen
@@ -94,19 +94,19 @@ BOOL pipeIOWait               = false;
 // http://msdn.microsoft.com/en-us/library/windows/desktop/aa365690(v=vs.85).aspx
 LPWSTR ErrorMessage(DWORD error) { 
 
-    LPWSTR lpMsgBuf = NULL;
+	LPWSTR lpMsgBuf = NULL;
 
-    FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | 
-        FORMAT_MESSAGE_FROM_SYSTEM |
-        FORMAT_MESSAGE_IGNORE_INSERTS,
-        NULL,
-        error,
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPWSTR) &lpMsgBuf,
-        0, NULL );
+	FormatMessage(
+		FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+		FORMAT_MESSAGE_FROM_SYSTEM |
+		FORMAT_MESSAGE_IGNORE_INSERTS,
+		NULL,
+		error,
+		MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+		(LPWSTR) &lpMsgBuf,
+		0, NULL );
 
-    return((LPWSTR)lpMsgBuf);
+	return((LPWSTR)lpMsgBuf);
 }
 
 // helper function to log errors to a file as well as show an alert window
@@ -193,10 +193,10 @@ void _stdcall HandleIOError(double *PInput, double *POutput, DWORD error) {
 // calls HandleMessage() if it reads a message.
 // if there is no message it doesn't do much
 void _stdcall ReadPipe(double *PInput, double *POutput) {
-    DWORD numBytesToRead    = (BUF_SIZE-1) * sizeof(wchar_t);
-    DWORD numBytesRead      = 0;
-    DWORD error             = 0;
-    LPWSTR errMsg           = NULL;
+	DWORD numBytesToRead    = (BUF_SIZE-1) * sizeof(wchar_t);
+	DWORD numBytesRead      = 0;
+	DWORD error             = 0;
+	LPWSTR errMsg           = NULL;
 
 	if (pipe == INVALID_HANDLE_VALUE) {
 		return;
@@ -219,23 +219,23 @@ void _stdcall ReadPipe(double *PInput, double *POutput) {
 		} else {
 			error = GetLastError();
 			switch (error) {
-				case ERROR_IO_PENDING:
-					{
-						// this is not an "actual" error but it is how windows is telling us
-						// "there is no message to be read"
-						pipeIOWait = true;
-						break;
-					}
-				case ERROR_IO_INCOMPLETE:
-					{
-						//LogError(L"TODO: calling GetOverlappedResult() when we are not in the right state");
-						break;
-					}
-				default:
-					{
-						HandleIOError(PInput, POutput, error);
-						break;
-					}
+			case ERROR_IO_PENDING:
+				{
+					// this is not an "actual" error but it is how windows is telling us
+					// "there is no message to be read"
+					pipeIOWait = true;
+					break;
+				}
+			case ERROR_IO_INCOMPLETE:
+				{
+					//LogError(L"TODO: calling GetOverlappedResult() when we are not in the right state");
+					break;
+				}
+			default:
+				{
+					HandleIOError(PInput, POutput, error);
+					break;
+				}
 			}
 		}
 	} else {
@@ -256,19 +256,19 @@ void _stdcall ReadPipe(double *PInput, double *POutput) {
 		} else {
 			error = GetLastError();
 			switch (error) {
-				case ERROR_IO_PENDING:
-					{
-						// this is normal. We've asked to read the next message
-						// but it isn't here yet. We'll read it on a later invocation
-						// of ReadPipe()
-						pipeIOWait = true;
-						break;
-					}
-				default:
-					{
-						HandleIOError(PInput, POutput, error);
-						break;
-					}
+			case ERROR_IO_PENDING:
+				{
+					// this is normal. We've asked to read the next message
+					// but it isn't here yet. We'll read it on a later invocation
+					// of ReadPipe()
+					pipeIOWait = true;
+					break;
+				}
+			default:
+				{
+					HandleIOError(PInput, POutput, error);
+					break;
+				}
 			}
 		}
 	}
@@ -281,24 +281,24 @@ void _stdcall ConnectPipe(double *PInput, double *POutput) {
 	POutput[OUT_PCONNECT] = LOW;
 
 	// create the named pipe
-    pipe = CreateFile(
-        pipeName,
-        GENERIC_READ | GENERIC_WRITE,
-        FILE_SHARE_READ | FILE_SHARE_WRITE,
-        NULL,
-        OPEN_EXISTING,
-        FILE_FLAG_OVERLAPPED, // async... FILE_ATTRIBUTE_NORMAL,
-        NULL
-    );
- 
-    if (pipe == INVALID_HANDLE_VALUE) {
+	pipe = CreateFile(
+		pipeName,
+		GENERIC_READ | GENERIC_WRITE,
+		FILE_SHARE_READ | FILE_SHARE_WRITE,
+		NULL,
+		OPEN_EXISTING,
+		FILE_FLAG_OVERLAPPED, // async... FILE_ATTRIBUTE_NORMAL,
+		NULL
+		);
+
+	if (pipe == INVALID_HANDLE_VALUE) {
 		// this means we can't become a client to the named pipe
 		// usually this happens because creation workshop is not running
 		// it can also happen if we are running multiple instances of
 		// this DLL (either using it multiple times in one profilab
 		// project, or running profilab multiple times)
-        DWORD error = GetLastError();
-        LPWSTR errMsg = ErrorMessage(error);
+		DWORD error = GetLastError();
+		LPWSTR errMsg = ErrorMessage(error);
 		LocalFree(errMsg);
 		LogMessage(lstrcat(L"Cannot connect to Creation Workshop: ", errMsg));
 	} else {
