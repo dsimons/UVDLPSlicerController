@@ -16,9 +16,11 @@ using UV_DLP_3D_Printer.Drivers;
 
 namespace UV_DLP_3D_Printer.Drivers
 {
-    public class NamedPipeDriver : DeviceDriver
+    public class NamedPipeDriver : DeviceDriver, IDeviceReadyStatus
     {
         public bool Connected { get { return m_connected; } }
+
+        public bool IsDeviceReady { get; private set; }
 
         private NamedPipeServer _server;
 
@@ -30,6 +32,12 @@ namespace UV_DLP_3D_Printer.Drivers
             UVDLPApp.Instance().m_buildmgr.PrintLayer += new delPrinterLayer(PrintLayer);
             _server = new NamedPipeServer("3dPrinter");
             _server.ConnectionStatusUpdated += _server_ConnectionStatusUpdated;
+            _server.ClientReadyStatusUpdated += _server_ClientReadyStatusUpdated;
+        }
+
+        void _server_ClientReadyStatusUpdated(object sender, ClientReadyStatusEventArgs e)
+        {
+            IsDeviceReady = e.ClientReady;
         }
 
         void _server_ConnectionStatusUpdated(object sender, ConnectionStatusEventArgs e)

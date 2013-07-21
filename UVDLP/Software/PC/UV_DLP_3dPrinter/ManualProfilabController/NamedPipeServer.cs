@@ -33,13 +33,16 @@ namespace ManualProfilabController
         {
             _running = true;
             _serverThread = new Thread(Run);
+            _serverThread.IsBackground = true;
             _serverThread.Start();
         }
 
         public void Stop()
         {
-            _running = false;
-            _serverThread.Interrupt();
+            if (_running) {
+                _running = false;
+                _serverThread.Interrupt();
+            }
         }
 
         public void Send(string message)

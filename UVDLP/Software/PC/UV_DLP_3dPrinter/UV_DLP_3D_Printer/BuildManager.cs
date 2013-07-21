@@ -6,6 +6,7 @@ using System.Timers;
 using System.Drawing;
 using System.Threading;
 using UV_DLP_3D_Printer.Slicing;
+using UV_DLP_3D_Printer.Device_Interface;
 
 namespace UV_DLP_3D_Printer
 {
@@ -64,6 +65,7 @@ namespace UV_DLP_3D_Printer
 
         Bitmap m_blankimage = null; // a blank image to display
         Bitmap m_calibimage = null; // a calibration image to display
+        private IDeviceReadyStatus m_deviceReady;
 
         public BuildManager() 
         {
@@ -169,7 +171,7 @@ namespace UV_DLP_3D_Printer
         }
 
         // This function is called to start the print job
-        public void StartPrint(SliceFile sf, GCodeFile gcode) 
+        public void StartPrint(SliceFile sf, GCodeFile gcode, IDeviceReadyStatus deviceStatus) 
         {
             if (m_printing)  // already printing
                 return;
@@ -185,6 +187,7 @@ namespace UV_DLP_3D_Printer
                 RaiseStatusEvent(ePrintStat.ePrintCancelled);
                 return;
             }
+            m_deviceReady = deviceStatus;
             // we really need to map onto the events of the PrinterInterface to determine
             // important stuff like current z position, HBP temp, etc...
             m_printing = true;
@@ -192,6 +195,7 @@ namespace UV_DLP_3D_Printer
             m_gcode = gcode; // set the file 
             m_state = STATE_START; // set the state machine as started
             m_runthread = new Thread(new ThreadStart(BuildThread));
+            m_runthread.IsBackground = true; // stop on program exit
             m_running = true;
             m_runthread.Start();
         }
@@ -234,7 +238,10 @@ namespace UV_DLP_3D_Printer
             bool printing_layer = false;
             while (m_running)
             {
-                switch (m_state) 
+                while (m_deviceReady != null && !m_deviceReady.IsDeviceReady) {
+                    Thread.Sleep(50);
+                }
+                switch (m_state)
                 {
                     case BuildManager.STATE_START:
                         //start things off, reset some variables
@@ -302,7 +309,7 @@ namespace UV_DLP_3D_Printer
                                 }
                                 else 
                                 {
-
+                                    printing_layer = true;
                                     m_curlayer = layer;
                                     bmp = m_sf.RenderSlice(m_curlayer); // get the rendered image slice
                                 }

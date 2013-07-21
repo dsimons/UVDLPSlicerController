@@ -15,12 +15,17 @@ namespace UV_DLP_3D_Printer.Device_Interface
         private bool _running = false;
         private bool _connected = false;
         private bool _waiting = false;
+        private bool _clientReady = false;
         private NamedPipeServerStream _server;
         private StreamWriter _writer;
         private Thread _serverThread;
 
+        private object _writeLock = new object();
+
         public event EventHandler<ConnectionStatusEventArgs> ConnectionStatusUpdated;
-        
+        public event EventHandler<ClientReadyStatusEventArgs> ClientReadyStatusUpdated;
+        private StreamReader _reader;
+
         public NamedPipeServer(string name)
         {
             _pipeName = name;
@@ -28,11 +33,9 @@ namespace UV_DLP_3D_Printer.Device_Interface
 
         public void Start()
         {
-            if (_running) {
-                return;
-            }
             _running = true;
             _serverThread = new Thread(Run);
+            _serverThread.IsBackground = true;
             _serverThread.Start();
         }
 
@@ -47,8 +50,31 @@ namespace UV_DLP_3D_Printer.Device_Interface
         public void Send(string message)
         {
             if (_writer != null) {
-                _writer.Write(message);
-                _writer.Flush();
+                lock (_writeLock) {
+                    if (_writer != null) {
+                        _writer.Write(message);
+                        _writer.Flush();
+                    }
+                }
+            }
+        }
+
+        private string Read()
+        {
+            try {
+                if (_reader != null) {
+                    var buffer = new char[256];
+                    var readbytescount = _reader.Read(buffer, 0, 256);
+                    if (readbytescount > 0) {
+                        return new string(buffer.Take(readbytescount).ToArray());
+                    } else {
+                        return null;
+                    }
+                } else {
+                    return null;
+                }
+            } catch {
+                return null;
             }
         }
 
@@ -57,28 +83,34 @@ namespace UV_DLP_3D_Printer.Device_Interface
             try {
                 while (_running) {
                     if (_server != null) {
-                        _writer = null;
+                        lock (_writeLock) {
+                            _writer = null;
+                        }
+                        _reader = null;
                         _server.Dispose();
                         _server = null;
                     }
                     _server = new NamedPipeServerStream(_pipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
-                    _writer = new StreamWriter(_server, Encoding.Unicode);
+                    lock (_writeLock) {
+                        _writer = new StreamWriter(_server, Encoding.Unicode);
+                    }
+                    _reader = new StreamReader(_server, Encoding.Unicode);
                     _waiting = true;
                     _server.BeginWaitForConnection(waiting_callback, null);
                     while (_waiting) {
-                        Thread.Sleep(100);
+                        Thread.Sleep(500);
                     }
                     _connected = true;
                     OnConnectionChanged();
                     while (_running) {
                         try {
-                            Send("PING");
+                            UpdateClientReadyStatus();
                         } catch {
                             _connected = false;
                             OnConnectionChanged();
                             break;
                         }
-                        Thread.Sleep(250);
+                        Thread.Sleep(100);
                     }
                 }
             } catch (ThreadInterruptedException) {
@@ -88,7 +120,23 @@ namespace UV_DLP_3D_Printer.Device_Interface
                     _server = null;
                 }
             }
-         }
+        }
+
+        private void UpdateClientReadyStatus()
+        {
+            Send("GET_READY_STATUS");
+            var response = Read();
+            bool ready;
+            if (response == "READY") {
+                ready = true;
+            } else {
+                ready = false;
+            }
+            if (_clientReady != ready) {
+                _clientReady = ready;
+                OnClientReadyChanged();
+            }
+        }
 
         private void waiting_callback(IAsyncResult ar)
         {
@@ -106,6 +154,14 @@ namespace UV_DLP_3D_Printer.Device_Interface
             if (ConnectionStatusUpdated != null) {
                 var handle = ConnectionStatusUpdated;
                 handle(this, new ConnectionStatusEventArgs(_connected));
+            }
+        }
+
+        private void OnClientReadyChanged()
+        {
+            if (ClientReadyStatusUpdated != null) {
+                var handle = ClientReadyStatusUpdated;
+                handle(this, new ClientReadyStatusEventArgs(_clientReady));
             }
         }
     }

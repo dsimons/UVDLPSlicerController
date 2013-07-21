@@ -16,6 +16,7 @@ using System.IO.Ports;
 using System.IO;
 using System.Collections;
 using UV_DLP_3D_Printer.GUI;
+using UV_DLP_3D_Printer.Device_Interface;
 
 namespace UV_DLP_3D_Printer
 {
@@ -748,7 +749,12 @@ namespace UV_DLP_3D_Printer
             }
             else
             {
-                UVDLPApp.Instance().m_buildmgr.StartPrint(UVDLPApp.Instance().m_slicefile, UVDLPApp.Instance().m_gcode);
+                var device = UVDLPApp.Instance().m_deviceinterface;
+                if (device.Driver is IDeviceReadyStatus) {
+                    UVDLPApp.Instance().m_buildmgr.StartPrint(UVDLPApp.Instance().m_slicefile, UVDLPApp.Instance().m_gcode, (IDeviceReadyStatus)device.Driver);
+                } else {
+                    UVDLPApp.Instance().m_buildmgr.StartPrint(UVDLPApp.Instance().m_slicefile, UVDLPApp.Instance().m_gcode, null);
+                }
             }
         }
         private void cmdPause_Click(object sender, EventArgs e)
