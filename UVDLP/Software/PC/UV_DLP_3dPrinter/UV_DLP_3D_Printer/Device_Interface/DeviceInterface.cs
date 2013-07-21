@@ -87,12 +87,13 @@ namespace UV_DLP_3D_Printer
         void m_timeouttimer_Elapsed(object sender, ElapsedEventArgs e)
         {
             // the command that was sent last has now timed out
-            if (StatusEvent != null)
-            {
-                StatusEvent(ePIStatus.eTimedout, "Command Timed Out");
-                DebugLogger.Instance().LogRecord("Command Timed out");
-                m_timeouttimer.Enabled = false;
-            }
+            // TODO: status event does not seem thread safe and the timer event keeps getting called over and over for no good reason.
+            //if (StatusEvent != null)
+            //{
+            //    StatusEvent(ePIStatus.eTimedout, "Command Timed Out");
+            //    DebugLogger.Instance().LogRecord("Command Timed out");
+            //    m_timeouttimer.Enabled = false;
+            //}
         }
 
         // get and set the printdriver

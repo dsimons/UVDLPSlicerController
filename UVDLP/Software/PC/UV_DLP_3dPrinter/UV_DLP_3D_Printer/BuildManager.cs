@@ -238,9 +238,7 @@ namespace UV_DLP_3D_Printer
             bool printing_layer = false;
             while (m_running)
             {
-                while (m_deviceReady != null && !m_deviceReady.IsDeviceReady) {
-                    Thread.Sleep(50);
-                }
+                
                 switch (m_state)
                 {
                     case BuildManager.STATE_START:
@@ -309,6 +307,12 @@ namespace UV_DLP_3D_Printer
                                 }
                                 else 
                                 {
+                                    while (
+                                        m_deviceReady != null &&
+                                        !m_deviceReady.IsDeviceReady
+                                    ) {
+                                        Thread.Sleep(50);
+                                    }
                                     printing_layer = true;
                                     m_curlayer = layer;
                                     bmp = m_sf.RenderSlice(m_curlayer); // get the rendered image slice

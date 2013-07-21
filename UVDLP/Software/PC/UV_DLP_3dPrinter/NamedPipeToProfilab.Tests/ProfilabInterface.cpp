@@ -105,6 +105,55 @@ namespace NamedPipeToProfilabTests
 			free(user);
 		}
 
+		TEST_METHOD(ExerciseCSimulatorLoop)
+		{
+			double* in = (double*)malloc(200 * sizeof(double));
+			double* out = (double*)malloc(200 * sizeof(double));
+			double* user = (double*)malloc(200 * sizeof(double));
+			
+			memset(in, 0, 200 * sizeof(double));
+
+			// Start before pipe
+			::CSimStart(in, out, user);
+
+			for (int i = 0; i < 10000; i++) {
+				CCalculate(in, out, user);
+			}
+
+			HANDLE pipe = OpenPipe();
+
+
+			ConnectNamedPipe(pipe, NULL); // Block until DLL connected
+
+			// Excercise pipe by checking status
+			for (int i = 0; i < 1000; i++) {
+				WriteToPipe(pipe, L"GET_READY_STATUS");
+				in[IN_RDY] = 0;
+				::CCalculate(in, out, user);
+				WCHAR pipeBuffer[128];
+				memset(pipeBuffer, 0, 128 * sizeof(WCHAR));
+				if (ReadFromPipe(pipe, pipeBuffer, 128)) { 
+					Assert::AreEqual(L"BUSY", pipeBuffer);
+				}
+
+				WriteToPipe(pipe, L"GET_READY_STATUS");
+
+				in[IN_RDY] = 5;
+				::CCalculate(in, out, user);
+				memset(pipeBuffer, 0, 128 * sizeof(WCHAR));
+				if (ReadFromPipe(pipe, pipeBuffer, 128)) { 
+					Assert::AreEqual(L"READY", pipeBuffer);
+				}
+			}
+			::CSimStop(in, out, user);
+
+			CloseHandle(pipe);
+			
+			free(in);
+			free(out);
+			free(user);
+		}
+
 		HANDLE OpenPipe()
 		{
 			return CreateNamedPipe(

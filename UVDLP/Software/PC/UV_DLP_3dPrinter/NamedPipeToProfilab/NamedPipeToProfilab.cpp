@@ -128,11 +128,7 @@ void _stdcall LogError(wchar_t *message) {
 
 // helper function to log informational status to a file
 void _stdcall LogMessage(wchar_t *message) {
-	FILE *logFile;
-	fopen_s(&logFile, "NamedPipe.txt", "a+");
-	fwprintf_s(logFile, L"INFO: %s\n", message);
-	fclose(logFile);
-	//MessageBoxW(NULL,message,L"ProjectImage Message", MB_OK);
+	// TODO: writing to file is too slow. Determine what logging is needed
 }
 
 // called whenever we get a START message
@@ -324,17 +320,7 @@ void _stdcall ConnectPipe(double *PInput, double *POutput) {
 		NULL
 		);
 
-	if (pipe == INVALID_HANDLE_VALUE) {
-		// this means we can't become a client to the named pipe
-		// usually this happens because creation workshop is not running
-		// it can also happen if we are running multiple instances of
-		// this DLL (either using it multiple times in one profilab
-		// project, or running profilab multiple times)
-		DWORD error = GetLastError();
-		LPWSTR errMsg = ErrorMessage(error);
-		LocalFree(errMsg);
-		LogMessage(lstrcat(L"Cannot connect to Creation Workshop: ", errMsg));
-	} else {
+	if (pipe != INVALID_HANDLE_VALUE) {
 		// we managed to connect to creation workshop
 		pconnect = true;
 		POutput[OUT_PCONNECT] = HIGH;

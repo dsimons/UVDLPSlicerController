@@ -45,10 +45,10 @@ namespace UV_DLP_3D_Printer.Drivers
             m_connected = e.ClientConnected;
             if (!m_connected) {
                 RaiseDeviceStatus(this, eDeviceStatus.eDisconnect);
-                DebugLogger.Instance().LogRecord("PROFILAB disconnected: Waiting for client to connect");
+                DebugLogger.Instance().LogRecord("Named pipe disconnected: Waiting for client to connect");
             } else {
                 RaiseDeviceStatus(this, eDeviceStatus.eConnect);
-                DebugLogger.Instance().LogRecord("PROFILAB client has connected.");
+                DebugLogger.Instance().LogRecord("Named pipe client (printer) has connected.");
             }
         }
 
@@ -59,10 +59,6 @@ namespace UV_DLP_3D_Printer.Drivers
                 _server.Stop();
                 m_connected = false;
                 RaiseDeviceStatus(this, eDeviceStatus.eDisconnect);
-            }
-            else
-            {
-                DebugLogger.Instance().LogRecord("was already disconnected from ProfiLab");
             }
             return true;
         }
@@ -93,11 +89,11 @@ namespace UV_DLP_3D_Printer.Drivers
             if (this.Connected)
             {
                 _server.Send("START");
-                DebugLogger.Instance().LogRecord("sent START to ProfiLab");
+                DebugLogger.Instance().LogRecord("Named pipe sent: START");
             }
             else
             {
-                DebugLogger.Instance().LogRecord("could not send START to ProfiLab");
+                DebugLogger.Instance().LogRecord("Named pipe not connected, could not send: START");
             }
         }
 
@@ -106,11 +102,11 @@ namespace UV_DLP_3D_Printer.Drivers
             if (this.Connected)
             {
                 _server.Send("PAUSE");
-                DebugLogger.Instance().LogRecord("sent PAUSE to ProfiLab");
+                DebugLogger.Instance().LogRecord("Named pipe sent: PAUSE");
             }
             else
             {
-                DebugLogger.Instance().LogRecord("could not send PAUSE to ProfiLab");
+                DebugLogger.Instance().LogRecord("Named pipe not connected, could not send: PAUSE");
             }
         }
 
@@ -119,11 +115,11 @@ namespace UV_DLP_3D_Printer.Drivers
             if (this.Connected)
             {
                 _server.Send("CANCEL");
-                DebugLogger.Instance().LogRecord("sent CANCEL to ProfiLab");
+                DebugLogger.Instance().LogRecord("Named pipe sent: CANCEL");
             }
             else
             {
-                DebugLogger.Instance().LogRecord("could not send CANCEL to ProfiLab");
+                DebugLogger.Instance().LogRecord("Named pipe not connected, could not send: CANCEL");
             }
         }
 
@@ -157,9 +153,9 @@ namespace UV_DLP_3D_Printer.Drivers
             // Sync signal
             if (this.Connected) {
                 _server.Send("LAYER_COMPLETED");
-                DebugLogger.Instance().LogRecord("sent LAYER_COMPLETED to ProfiLab");
+                // DebugLogger.Instance().LogRecord("sent LAYER_COMPLETED to ProfiLab");
             } else {
-                DebugLogger.Instance().LogRecord("could not send LAYER_COMPLETED to ProfiLab");
+                DebugLogger.Instance().LogRecord("Named pipe not connected, could not send: LAYER_COMPLETED");
             }
         }
 
